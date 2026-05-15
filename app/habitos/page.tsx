@@ -69,6 +69,9 @@ type Habito = {
   historico: string[]
 }
 
+const COL = 160
+const CELL = 22
+
 function strDia(ano: number, mes: number, dia: number) {
   return `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`
 }
@@ -175,22 +178,23 @@ export default function Habitos() {
   const iconesList = novo.tipo === "negativo" ? iconesNegativos : iconesPositivos
   const placeholder = iconesList.find(o => o.ic === novo.icone)?.placeholder || "Nome do hábito"
 
-  function renderLinhaHabito(h: Habito, isNeg: boolean) {
+  function renderLinha(h: Habito, isNeg: boolean) {
     const hist = h.historico || []
     const streak = getStreak(hist, hojeStr)
     return (
       <div key={h.id} style={{ display: "flex", alignItems: "stretch", borderBottom: "1px solid #0d0d18" }}>
-        <div style={{ width: 200, flexShrink: 0, padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: isNeg ? "#05906918" : "#7c3aed18", border: `1px solid ${isNeg ? "#05906930" : "#7c3aed30"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>{h.icone}</div>
+        <div style={{ width: COL, flexShrink: 0, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: isNeg ? "#05906918" : "#7c3aed18", border: `1px solid ${isNeg ? "#05906930" : "#7c3aed30"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>{h.icone}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.nome}</div>
-            <div style={{ fontSize: 10, color: "#4a4a6a" }}>Meta: {h.meta}</div>
-            {streak > 0 && <div style={{ fontSize: 10, color: "#f59e0b" }}>🔥 {streak} dias</div>}
+            <div style={{ fontSize: 11, fontWeight: 500, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.nome}</div>
+            <div style={{ fontSize: 9, color: "#4a4a6a" }}>{h.meta}</div>
+            {streak > 0 && <div style={{ fontSize: 9, color: "#f59e0b" }}>🔥 {streak}d</div>}
           </div>
-          <button onClick={() => deletar(h.id)} style={{ background: "none", border: "none", color: "#2e2e4e", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
+          <button onClick={() => deletar(h.id)} style={{ background: "none", border: "none", color: "#2e2e4e", cursor: "pointer", fontSize: 10, padding: 0, flexShrink: 0 }}>✕</button>
         </div>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, padding: "6px 0" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, padding: "5px 0" }}>
+          {/* Linha principal */}
           <div style={{ display: "flex" }}>
             {dias.map(d => {
               const key = strDia(ano, mes, d)
@@ -198,23 +202,42 @@ export default function Habitos() {
               const futuro = key > hojeStr
               const ehHoje = key === hojeStr
               const perfeito = feito && habitos.every(hh => (hh.historico || []).includes(key))
-              let bg = "#1a1a2e", shadow = "none", content = ""
+              let bg = "#1e1e2e", shadow = "none", content = ""
               if (!futuro && feito) {
                 bg = isNeg ? "#059669" : "#7c3aed"
-                shadow = `0 0 6px ${isNeg ? "#059669" : "#7c3aed"}60`
+                shadow = `0 0 5px ${isNeg ? "#059669" : "#7c3aed"}60`
                 content = perfeito ? "⭐" : "✓"
               } else if (!futuro && !feito && isNeg) {
                 bg = "#dc2626"
                 shadow = "0 0 4px #dc262640"
                 content = "✕"
+              } else if (futuro) {
+                bg = "#1e1e2e"
               }
               return (
-                <div key={d} onClick={() => toggleDia(h.id, d)} title={`${d}/${mes + 1} — ${feito ? (isNeg ? "Dia limpo" : "Feito") : (isNeg ? "Recaída" : "Não feito")}`} style={{ width: 28, height: 20, borderRadius: 4, background: futuro ? "transparent" : bg, border: ehHoje ? "1.5px solid #7c3aed60" : "1px solid transparent", cursor: futuro ? "default" : "pointer", opacity: futuro ? 0.15 : 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff", fontWeight: 600, boxShadow: shadow, transition: "all .15s", flexShrink: 0 }}>
+                <div
+                  key={d}
+                  onClick={() => toggleDia(h.id, d)}
+                  title={`${d}/${mes + 1}`}
+                  style={{
+                    width: CELL, height: 18, borderRadius: 4,
+                    background: bg,
+                    border: ehHoje ? "1.5px solid #7c3aed60" : "1px solid transparent",
+                    cursor: futuro ? "default" : "pointer",
+                    opacity: futuro ? 0.35 : 1,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 8, color: "#fff", fontWeight: 600,
+                    boxShadow: shadow,
+                    transition: "all .15s",
+                    flexShrink: 0,
+                  }}
+                >
                   {content}
                 </div>
               )
             })}
           </div>
+          {/* Linha decorativa */}
           <div style={{ display: "flex" }}>
             {dias.map(d => {
               const key = strDia(ano, mes, d)
@@ -222,11 +245,23 @@ export default function Habitos() {
               const futuro = key > hojeStr
               const ehHoje = key === hojeStr
               const perfeito = feito && habitos.every(hh => (hh.historico || []).includes(key))
-              let bg = "#12121e"
+              let bg = "#1a1a2e"
               if (!futuro && feito) bg = isNeg ? "#05906940" : (perfeito ? "#a855f760" : "#7c3aed40")
               else if (!futuro && !feito && isNeg) bg = "#dc262630"
               return (
-                <div key={d} onClick={() => toggleDia(h.id, d)} style={{ width: 28, height: 10, borderRadius: 3, background: futuro ? "transparent" : bg, border: ehHoje ? "1px solid #7c3aed30" : "none", cursor: futuro ? "default" : "pointer", opacity: futuro ? 0.1 : 1, flexShrink: 0, transition: "all .15s" }} />
+                <div
+                  key={d}
+                  onClick={() => toggleDia(h.id, d)}
+                  style={{
+                    width: CELL, height: 8, borderRadius: 3,
+                    background: bg,
+                    border: ehHoje ? "1px solid #7c3aed30" : "none",
+                    cursor: futuro ? "default" : "pointer",
+                    opacity: futuro ? 0.3 : 1,
+                    flexShrink: 0,
+                    transition: "all .15s",
+                  }}
+                />
               )
             })}
           </div>
@@ -239,6 +274,7 @@ export default function Habitos() {
     <div style={{ display: "flex", gap: 20, padding: "24px 28px", color: "#e2e8f0" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
 
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Hábitos</h1>
@@ -255,6 +291,7 @@ export default function Habitos() {
           </div>
         </div>
 
+        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Consistência geral", valor: `${consistencia}%`, sub: "este mês", ring: true },
@@ -285,19 +322,20 @@ export default function Habitos() {
           ))}
         </div>
 
+        {/* Grade */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid #1a1a2e" }}>
-            <span style={{ fontSize: 14, fontWeight: 500 }}>{mesesNomes[mes]} {ano}</span>
-            <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#6b6b8a", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #1a1a2e" }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{mesesNomes[mes]} {ano}</span>
+            <div style={{ display: "flex", gap: 10, fontSize: 10, color: "#6b6b8a", flexWrap: "wrap" }}>
               {[
                 { cor: "#7c3aed", label: "Completo" },
-                { cor: "#1e1e35", label: "Não feito" },
+                { cor: "#1e1e2e", label: "Não feito" },
                 { label: "Dia perfeito", star: true },
                 { cor: "#059669", label: "Dia limpo" },
                 { cor: "#dc2626", label: "Recaída" },
               ].map((l: any, i) => (
-                <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {l.star ? <span style={{ fontSize: 10 }}>⭐</span> : <span style={{ width: 10, height: 10, borderRadius: 3, background: l.cor, display: "inline-block" }} />}
+                <span key={i} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                  {l.star ? <span style={{ fontSize: 9 }}>⭐</span> : <span style={{ width: 8, height: 8, borderRadius: 2, background: l.cor, display: "inline-block" }} />}
                   {l.label}
                 </span>
               ))}
@@ -305,18 +343,20 @@ export default function Habitos() {
           </div>
 
           <div style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: `${200 + totalDias * 28}px` }}>
-              <div style={{ display: "flex", padding: "6px 0 4px", borderBottom: "1px solid #1a1a2e", background: "#0a0a14" }}>
-                <div style={{ width: 200, flexShrink: 0, padding: "0 16px", fontSize: 10, color: "#4a4a6a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center" }}>HÁBITOS</div>
+            <div style={{ minWidth: `${COL + totalDias * CELL}px` }}>
+
+              {/* Header dias */}
+              <div style={{ display: "flex", padding: "5px 0 3px", borderBottom: "1px solid #1a1a2e", background: "#0a0a14" }}>
+                <div style={{ width: COL, flexShrink: 0, padding: "0 12px", fontSize: 9, color: "#4a4a6a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center" }}>HÁBITOS</div>
                 {dias.map(d => {
                   const key = strDia(ano, mes, d)
                   const ehHoje = key === hojeStr
                   const diaSem = new Date(key + "T00:00:00").getDay()
                   const perfeito = habitos.length > 0 && habitos.every(h => (h.historico || []).includes(key)) && key <= hojeStr
                   return (
-                    <div key={d} style={{ width: 28, flexShrink: 0, textAlign: "center" }}>
-                      <div style={{ fontSize: 8, color: "#2e2e4e" }}>{diasSemCurtos[diaSem]}</div>
-                      <div style={{ fontSize: 10, fontWeight: ehHoje ? 700 : 400, color: ehHoje ? "#a855f7" : perfeito ? "#f59e0b" : "#3a3a5a" }}>
+                    <div key={d} style={{ width: CELL, flexShrink: 0, textAlign: "center" }}>
+                      <div style={{ fontSize: 7, color: "#2e2e4e" }}>{diasSemCurtos[diaSem]}</div>
+                      <div style={{ fontSize: 9, fontWeight: ehHoje ? 700 : 400, color: ehHoje ? "#a855f7" : perfeito ? "#f59e0b" : "#4a4a6a" }}>
                         {perfeito ? "⭐" : d}
                       </div>
                     </div>
@@ -326,15 +366,15 @@ export default function Habitos() {
 
               {habitosPositivos.length > 0 && (
                 <>
-                  <div style={{ padding: "8px 16px 4px", fontSize: 10, color: "#4a4a6a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", background: "#0a0a14" }}>Hábitos Positivos</div>
-                  {habitosPositivos.map(h => renderLinhaHabito(h, false))}
+                  <div style={{ padding: "6px 12px 3px", fontSize: 9, color: "#4a4a6a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", background: "#0a0a14" }}>Hábitos Positivos</div>
+                  {habitosPositivos.map(h => renderLinha(h, false))}
                 </>
               )}
 
               {habitosNegativos.length > 0 && (
                 <>
-                  <div style={{ padding: "8px 16px 4px", fontSize: 10, color: "#4a4a6a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", background: "#0a0a14", borderTop: "1px solid #1a1a2e" }}>Hábitos Negativos</div>
-                  {habitosNegativos.map(h => renderLinhaHabito(h, true))}
+                  <div style={{ padding: "6px 12px 3px", fontSize: 9, color: "#4a4a6a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", background: "#0a0a14", borderTop: "1px solid #1a1a2e" }}>Hábitos Negativos</div>
+                  {habitosNegativos.map(h => renderLinha(h, true))}
                 </>
               )}
 
@@ -345,8 +385,8 @@ export default function Habitos() {
                 </div>
               )}
 
-              <div style={{ padding: "10px 16px", borderTop: "1px solid #0d0d18" }}>
-                <button onClick={() => setModal(true)} style={{ background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, padding: 0 }}>
+              <div style={{ padding: "8px 12px", borderTop: "1px solid #0d0d18" }}>
+                <button onClick={() => setModal(true)} style={{ background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 5, padding: 0 }}>
                   <span>+</span> Adicionar hábito
                 </button>
               </div>
@@ -355,26 +395,27 @@ export default function Habitos() {
         </div>
       </div>
 
-      <div style={{ width: 220, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Sidebar */}
+      <div style={{ width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 500, color: "#c4b5fd", marginBottom: 14 }}>Resumo do mês</div>
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-            <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
-              <svg width="64" height="64" viewBox="0 0 64 64">
-                <circle cx="32" cy="32" r="26" fill="none" stroke="#1a1a2e" strokeWidth="5" />
-                <circle cx="32" cy="32" r="26" fill="none" stroke="#7c3aed" strokeWidth="5"
-                  strokeDasharray={`${2 * Math.PI * 26 * consistencia / 100} ${2 * Math.PI * 26}`}
-                  strokeLinecap="round" transform="rotate(-90 32 32)" />
+            <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <circle cx="30" cy="30" r="24" fill="none" stroke="#1a1a2e" strokeWidth="5" />
+                <circle cx="30" cy="30" r="24" fill="none" stroke="#7c3aed" strokeWidth="5"
+                  strokeDasharray={`${2 * Math.PI * 24 * consistencia / 100} ${2 * Math.PI * 24}`}
+                  strokeLinecap="round" transform="rotate(-90 30 30)" />
               </svg>
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#a855f7" }}>{consistencia}%</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#a855f7" }}>{consistencia}%</div>
                 <div style={{ fontSize: 8, color: "#4a4a6a" }}>consistência</div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
               {[
                 { cor: "#7c3aed", label: "Concluídos", val: totalFeito },
-                { cor: "#1e1e35", label: "Não concluídos", val: totalPossivel - totalFeito },
+                { cor: "#1e1e2e", label: "Não concluídos", val: totalPossivel - totalFeito },
                 { cor: "#f59e0b", label: "Dias perfeitos", val: diasPerfeitos },
               ].map((item, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -420,10 +461,10 @@ export default function Habitos() {
         </div>
       </div>
 
+      {/* Modal */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "#00000092", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, backdropFilter: "blur(8px)" }}>
           <div style={{ background: "#0d0d18", border: "1px solid #1a1a2e", borderRadius: 20, padding: 24, width: 480, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px #00000090" }}>
-
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Novo hábito</h2>
               <button onClick={() => setModal(false)} style={{ background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 20 }}>✕</button>
@@ -454,17 +495,17 @@ export default function Habitos() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
                 {iconesList.map(({ ic }) => {
-                  const selecionado = novo.icone === ic
-                  const corBorda = novo.tipo === "negativo" ? "#dc2626" : "#7c3aed"
+                  const sel = novo.icone === ic
+                  const cor = novo.tipo === "negativo" ? "#dc2626" : "#7c3aed"
                   return (
                     <button key={ic} onClick={() => setNovo({ ...novo, icone: ic })} style={{
                       width: "100%", aspectRatio: "1", borderRadius: 10, border: "1px solid",
-                      borderColor: selecionado ? corBorda : "#1e1e35",
-                      background: selecionado ? corBorda + "18" : "#12121f",
+                      borderColor: sel ? cor : "#1e1e35",
+                      background: sel ? cor + "18" : "#12121f",
                       cursor: "pointer", fontSize: 22,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      boxShadow: selecionado ? `0 0 12px ${corBorda}40` : "none",
-                      transform: selecionado ? "scale(1.08)" : "scale(1)",
+                      boxShadow: sel ? `0 0 12px ${cor}40` : "none",
+                      transform: sel ? "scale(1.08)" : "scale(1)",
                       transition: "all .15s",
                     }}>{ic}</button>
                   )
@@ -489,7 +530,7 @@ export default function Habitos() {
 
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 6, fontWeight: 500 }}>Meta diária (opcional)</div>
-              <input placeholder={novo.tipo === "negativo" ? "Ex: Todos os dias" : "Ex: 2h por dia"} value={novo.meta} onChange={e => setNova({ ...novo, meta: e.target.value })} style={{ width: "100%", background: "#12121f", border: "1px solid #1e1e35", borderRadius: 8, padding: "11px 14px", color: "#e2e8f0", fontSize: 13, outline: "none" }} />
+              <input placeholder={novo.tipo === "negativo" ? "Ex: Todos os dias" : "Ex: 2h por dia"} value={novo.meta} onChange={e => setNovo({ ...novo, meta: e.target.value })} style={{ width: "100%", background: "#12121f", border: "1px solid #1e1e35", borderRadius: 8, padding: "11px 14px", color: "#e2e8f0", fontSize: 13, outline: "none" }} />
             </div>
 
             <button onClick={adicionarHabito} disabled={!novo.nome.trim()} style={{
