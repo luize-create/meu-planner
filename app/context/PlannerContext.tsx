@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react"
 import { analisarDados, ResultadoAnalise } from "../lib/patternEngine"
+import { generateDecision, DecisionState } from "../lib/decisionEngine"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -43,6 +44,7 @@ type PlannerData = {
 type PlannerContextType = {
   data: PlannerData
   analise: ResultadoAnalise
+  decisao: DecisionState
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
   setHabitos: (h: Habito[] | any[]) => void
@@ -61,6 +63,19 @@ const defaultAnalise: ResultadoAnalise = {
   correlacoes: [], padroes: [], evolucao: [],
   melhorDiaSemana: "—", melhorHorarioFoco: "—",
   habitoAncora: null, consistenciaGeral: 0, diasAnalisados: 0
+}
+
+const defaultDecisao: DecisionState = {
+  estadoAtual: "estavel",
+  sobrecargaScore: 0,
+  clarezaScore: 50,
+  energiaScore: 50,
+  estabilidadeScore: 50,
+  modoProtecao: false,
+  prioridadeDoDia: "Manter a consistência de hoje.",
+  mensagemPrincipal: "Seu sistema parece estável. Continue protegendo o básico.",
+  sugestaoImediata: "Continue no ritmo.",
+  motivos: [],
 }
 
 const PlannerContext = createContext<PlannerContextType>({} as PlannerContextType)
@@ -83,7 +98,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (p) setProjetos(JSON.parse(p))
   }, [])
 
-  // ── CÉREBRO: roda análise sempre que dados mudam ──
+  // ── Análise de padrões ──
   const analise = useMemo((): ResultadoAnalise => {
     if (typeof window === "undefined") return defaultAnalise
     try {
@@ -100,6 +115,23 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }
   }, [data.habitos, data.sessoesFoco, data.tarefas, data.diario, projetos])
 
+  // ── Decisão inteligente ──
+  const decisao = useMemo((): DecisionState => {
+    if (typeof window === "undefined") return defaultDecisao
+    try {
+      return generateDecision({
+        tarefas: data.tarefas,
+        habitos: data.habitos,
+        diario: data.diario,
+        sessoesFoco: data.sessoesFoco,
+        projetos,
+        analise,
+      })
+    } catch {
+      return defaultDecisao
+    }
+  }, [data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos, analise])
+
   function setTarefas(tarefas: any[]) { setData(d => ({ ...d, tarefas })) }
   function setMetas(metas: Meta[]) { setData(d => ({ ...d, metas })) }
   function setHabitos(habitos: any[]) { setData(d => ({ ...d, habitos })) }
@@ -110,7 +142,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlannerContext.Provider value={{
-      data, analise,
+      data, analise, decisao,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
     }}>

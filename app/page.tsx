@@ -1,394 +1,485 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { usePlanner } from "./context/PlannerContext"
 import { useRouter } from "next/navigation"
 
-const frases = [
-  "Pequenas rotinas criam estabilidade. Continue.",
-  "Um dia de cada vez. Você está no caminho.",
-  "Clareza começa com organização. Siga em frente.",
-  "Cada ação pequena constrói algo grande.",
-  "Você está construindo algo incrível em silêncio.",
-  "Organize o dia, organize a mente.",
-  "Consistência é a forma mais silenciosa de evolução.",
-]
-
-const climasMentais = [
-  { label: "Nebuloso", sub: "porém funcional", icone: "🌥️", cor: "#6b6b8a" },
-  { label: "Claro", sub: "mente organizada", icone: "☀️", cor: "#f59e0b" },
-  { label: "Tempestuoso", sub: "passará logo", icone: "⛈️", cor: "#2563eb" },
-  { label: "Tranquilo", sub: "em equilíbrio", icone: "🌙", cor: "#7c3aed" },
-  { label: "Acelerado", sub: "muita energia", icone: "⚡", cor: "#d97706" },
-]
-
-function getStreak(habitos: any[], hojeStr: string) {
-  let max = 0
-  habitos.forEach((h: any) => {
-    let streak = 0
-    const d = new Date(hojeStr)
-    while ((h.historico || []).includes(d.toISOString().slice(0, 10))) {
-      streak++
-      d.setDate(d.getDate() - 1)
-    }
-    if (streak > max) max = streak
-  })
-  return max
-}
-
-export default function Dashboard() {
-  const { data, setTarefas } = usePlanner()
-  const { tarefas, habitos, metas } = data
+export default function Central() {
+  const { data, setTarefas, analise, decisao } = usePlanner()
   const router = useRouter()
 
-  const hoje = new Date()
-  const hojeStr = hoje.toISOString().slice(0, 10)
-  const hora = hoje.getHours()
-  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"
-  const iconeHora = hora < 12 ? "☀️" : hora < 18 ? "🌤️" : "🌙"
-  const frase = frases[hoje.getDay() % frases.length]
-  const dataFormatada = hoje.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
-  const dataCapital = dataFormatada.charAt(0).toUpperCase() + dataFormatada.slice(1)
+  const tarefas  = (data.tarefas  || []) as any[]
+  const habitos  = (data.habitos  || []) as any[]
+  const metas    = (data.metas    || []) as any[]
+  const sessoes  = (data.sessoesFoco || []) as any[]
+  const diario   = (data.diario   || []) as any[]
 
-  const [clima] = useState(climasMentais[0])
-  const [notaRapida, setNotaRapida] = useState("")
-  const [projetos, setProjetos] = useState<any[]>([])
-  const [diarioEntradas, setDiarioEntradas] = useState<any[]>([])
-  const [focoIntencao, setFocoIntencao] = useState("Criar com clareza e manter consistência")
-  const [editandoFoco, setEditandoFoco] = useState(false)
-  const [agendaHoje, setAgendaHoje] = useState<any[]>([])
+  const [projetos,     setProjetos]     = useState<any[]>([])
+  const [blocos,       setBlocos]       = useState<any[]>([])
+  const [intencao,     setIntencao]     = useState("Manter clareza e disciplina.")
+  const [editIntencao, setEditIntencao] = useState(false)
+  const [novaT,        setNovaT]        = useState("")
+  const [mostrarNovaT, setMostrarNovaT] = useState(false)
+
+  const hoje    = new Date().toISOString().slice(0, 10)
+  const hora    = new Date().getHours()
+  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"
 
   useEffect(() => {
     const p = localStorage.getItem("projetos-v1")
-    if (p) setProjetos(JSON.parse(p).filter((x: any) => x.status === "Em andamento").slice(0, 3))
-    const d = localStorage.getItem("diario-global")
-    if (d) setDiarioEntradas(JSON.parse(d).slice(0, 1))
-    const f = localStorage.getItem("foco-intencao")
-    if (f) setFocoIntencao(f)
-    const ag = localStorage.getItem("agenda-v3")
-    if (ag) {
-      const todos = JSON.parse(ag)
-      const deHoje = todos
-        .filter((b: any) => b.data === hojeStr)
-        .sort((a: any, b: any) => (a.horaInicio || "").localeCompare(b.horaInicio || ""))
-        .map((b: any) => {
-          const [h1, m1] = (b.horaInicio || "00:00").split(":").map(Number)
-          const [h2, m2] = (b.horaFim || "00:00").split(":").map(Number)
-          const dur = (h2 * 60 + m2) - (h1 * 60 + m1)
-          return { hora: b.horaInicio || "00:00", titulo: b.titulo || "Compromisso", dur: dur > 0 ? `${dur}min` : "", cor: b.cor || "#7c3aed" }
-        })
-      setAgendaHoje(deHoje)
-    }
-  }, [hojeStr])
+    if (p) setProjetos(JSON.parse(p))
+    const b = localStorage.getItem("agenda-v3")
+    if (b) setBlocos(JSON.parse(b).filter((bl: any) => bl.data === hoje).sort((a: any, z: any) => (a.horaInicio || "").localeCompare(z.horaInicio || "")))
+    const i = localStorage.getItem("foco-intencao")
+    if (i) setIntencao(i)
+  }, [hoje])
 
-  const tarefasHoje = (tarefas as any[]).filter((t: any) => t.data === hojeStr)
-  const tarefasPendentes = tarefasHoje.filter((t: any) => !t.feita)
-  const proximaTarefa = tarefasPendentes[0]
+  // ── Métricas ──
+  const tarefasHoje    = tarefas.filter((t: any) => t.data === hoje)
+  const tarefasPend    = tarefasHoje.filter((t: any) => !t.feita)
+  const tarefasFeitas  = tarefasHoje.filter((t: any) => t.feita)
+  const proximaTarefa  = tarefasPend[0]
+  const projetosAtivos = projetos.filter((p: any) => p.status === "Em andamento").slice(0, 3)
+  const metasAtivas    = metas.filter((m: any) => (m.progresso || 0) < 100).slice(0, 3)
+
+  // ── Do decisionEngine ──
+  const sobrecargaScore = decisao.sobrecargaScore
+  const sobrecargaLabel = decisao.estadoAtual === "critico" ? "Alta"
+    : decisao.estadoAtual === "sobrecarregado" ? "Moderada" : "Baixa"
+  const sobrecargaCor   = decisao.estadoAtual === "critico" ? "#dc2626"
+    : decisao.estadoAtual === "sobrecarregado" ? "#f59e0b" : "#10b981"
+  const lembrete        = decisao.sugestaoImediata
+
+  // ── Energia / Clareza / Motivação do diário ──
+  const ultimaDiario = diario.filter((e: any) => e.data === hoje)[0]
+    || [...diario].sort((a: any, b: any) => b.data.localeCompare(a.data))[0]
+  const energia   = ultimaDiario?.checkin?.energia   || 6
+  const clareza   = ultimaDiario?.checkin?.clareza   || 7
+  const motivacao = ultimaDiario?.checkin?.humor     || 6
+
+  // ── Insights positivos / negativos ──
+  const ajudando = useMemo(() => {
+    const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
+    analise.correlacoes.filter(c => c.tipo === "positiva").slice(0, 3).forEach(c => {
+      lista.push({
+        icone: c.origem === "exercicio" ? "🏃" : c.origem === "sono" ? "🌙" : c.origem === "rotina" ? "📅" : "✨",
+        label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1),
+        descricao: c.descricao,
+        valor: `+${Math.round(c.intensidade * 100)}%`
+      })
+    })
+    if (lista.length === 0) {
+      lista.push({ icone: "🌙", label: "Sono de qualidade",  descricao: "Noites bem dormidas aumentam sua clareza mental.", valor: "+28%" })
+      lista.push({ icone: "🏃", label: "Exercício",          descricao: "Dias de treino melhoram sua energia e foco.",       valor: "+23%" })
+      lista.push({ icone: "☀️", label: "Rotina matinal",     descricao: "Sua consistência melhora quando começa cedo.",      valor: "+18%" })
+    }
+    return lista.slice(0, 3)
+  }, [analise.correlacoes])
+
+  const prejudicando = useMemo(() => {
+    const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
+    analise.correlacoes.filter(c => c.tipo === "negativa").slice(0, 3).forEach(c => {
+      lista.push({
+        icone: c.origem === "tela" ? "📱" : c.origem === "ansiedade" ? "🌀" : "⚠️",
+        label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1),
+        descricao: c.descricao,
+        valor: `-${Math.round(c.intensidade * 100)}%`
+      })
+    })
+    if (lista.length === 0) {
+      lista.push({ icone: "📱", label: "Excesso de tela", descricao: "Noites com muita tela aumentam sua ansiedade.",       valor: "-21%" })
+      lista.push({ icone: "😴", label: "Pouco sono",      descricao: "Dormir menos de 6h impacta seu humor no dia seguinte.", valor: "-17%" })
+      lista.push({ icone: "🌀", label: "Multitarefas",    descricao: "Tentar fazer tudo ao mesmo tempo reduz sua clareza.", valor: "-14%" })
+    }
+    return lista.slice(0, 3)
+  }, [analise.correlacoes])
 
   function toggleTarefa(id: number) {
-    setTarefas((tarefas as any[]).map((t: any) => t.id === id ? { ...t, feita: !t.feita } : t) as any)
+    setTarefas(tarefas.map((t: any) => t.id === id ? { ...t, feita: !t.feita } : t) as any)
   }
 
-  const totalHabitos = (habitos as any[]).length
-  const habitosFeitosHoje = (habitos as any[]).filter((h: any) => (h.historico || []).includes(hojeStr))
-  const streak = getStreak(habitos as any[], hojeStr)
-
-  const ultimos7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(hojeStr)
-    d.setDate(d.getDate() - (6 - i))
-    return d.toISOString().slice(0, 10)
-  })
-  const diasSem = ["D", "S", "T", "Q", "Q", "S", "S"]
-
-  const evolucao = [
-    { label: "Mais clareza mental", valor: "+18%", up: true },
-    { label: "Menos sobrecarga", valor: "-23%", up: false },
-    { label: "Rotina mais consistente", valor: "+31%", up: true },
-    { label: "Mais estabilidade", valor: "+22%", up: true },
-  ]
-
-  const card: React.CSSProperties = {
-    background: "#0f0f1c",
-    border: "1px solid #1a1a2e",
-    borderRadius: 16,
-    padding: 20,
+  function adicionarTarefa() {
+    if (!novaT.trim()) return
+    const nova = { id: Date.now(), texto: novaT.trim(), descricao: "", categoria: "Pessoal", prioridade: "Média", hora: "", feita: false, data: hoje }
+    setTarefas([...tarefas, nova] as any)
+    setNovaT(""); setMostrarNovaT(false)
   }
+
+  function salvarIntencao(val: string) {
+    setIntencao(val)
+    localStorage.setItem("foco-intencao", val)
+    setEditIntencao(false)
+  }
+
+  const circ   = 2 * Math.PI * 40
+  const corEstado = decisao.estadoAtual === "leve" ? "#10b981"
+    : decisao.estadoAtual === "estavel" ? "#7c3aed"
+    : decisao.estadoAtual === "sobrecarregado" ? "#f59e0b" : "#dc2626"
 
   return (
-    <div style={{ padding: "28px 32px", color: "#e2e8f0", maxWidth: 1200 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", minHeight: "100vh", color: "#e2e8f0", background: "#07070f" }}>
 
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontSize: 26, fontWeight: 600, margin: "0 0 4px", letterSpacing: -0.5 }}>
-            {saudacao}. {iconeHora}
-          </h1>
-          <div style={{ fontSize: 13, color: "#4a4a6a" }}>{dataCapital}</div>
+      {/* COLUNA PRINCIPAL */}
+      <div style={{ padding: "22px 28px", overflowY: "auto" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Central</h1>
+              <span style={{ fontSize: 14, color: "#7c3aed" }}>✦</span>
+            </div>
+            <p style={{ fontSize: 12, color: "#3a3a5a", margin: 0 }}>Tudo o que importa, no lugar certo.</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 13, color: "#6b6b8a" }}>{saudacao} ☀️</div>
+            <div style={{ background: "#7c3aed20", border: "1px solid #7c3aed30", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#a855f7" }}>
+              ⚡ {data.xp} XP
+            </div>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: "#6b6b8a", fontStyle: "italic", textAlign: "right", maxWidth: 300 }}>
-          ❝ {frase} ❞
-        </div>
-      </div>
 
-      {/* Linha 1 — 4 cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+        {/* Hero */}
+        <div style={{ background: "linear-gradient(135deg, #0d0d1e, #12101e)", border: "1px solid #1a1a2e", borderRadius: 18, padding: "24px 28px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 70% 50%, #7c3aed12, transparent 60%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", right: "22%", bottom: 0, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, #7c3aed18, transparent 70%)", filter: "blur(30px)", pointerEvents: "none" }} />
 
-        {/* Estado atual */}
-        <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 11, color: "#4a4a6a", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em" }}>Estado atual</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
-            <div style={{ fontSize: 36 }}>{clima.icone}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 32, alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: clima.cor }}>{clima.label}</div>
-              <div style={{ fontSize: 12, color: "#6b6b8a" }}>{clima.sub}</div>
-            </div>
-          </div>
-          <button style={{ background: "none", border: "none", color: "#a855f7", fontSize: 12, cursor: "pointer", padding: 0, textAlign: "left" }}>
-            Ver detalhes do dia →
-          </button>
-        </div>
-
-        {/* Próxima ação */}
-        <div style={{ ...card }}>
-          <div style={{ fontSize: 11, color: "#4a4a6a", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>Próxima ação importante</div>
-          {proximaTarefa ? (
-            <>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-                <div onClick={() => toggleTarefa(proximaTarefa.id)} style={{ width: 18, height: 18, borderRadius: 5, border: "1.5px solid #2e2e4e", flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
-                <span style={{ fontSize: 14, fontWeight: 500, color: "#e2e8f0", lineHeight: 1.4 }}>{proximaTarefa.texto}</span>
+              <div style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>✦</span> Foco da sua vida hoje
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "#7c3aed20", color: "#a855f7" }}>Hoje</span>
-                {proximaTarefa.prioridade && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "#dc262620", color: "#f87171" }}>{proximaTarefa.prioridade} prioridade</span>}
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 13, color: "#4a4a6a" }}>
-              {tarefasHoje.length > 0 ? "✓ Todas concluídas hoje!" : "Nenhuma tarefa para hoje."}
+              {editIntencao ? (
+                <input autoFocus defaultValue={intencao}
+                  onBlur={e => salvarIntencao(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && salvarIntencao((e.target as HTMLInputElement).value)}
+                  style={{ fontSize: 24, fontWeight: 300, background: "none", border: "none", borderBottom: "1px solid #7c3aed40", color: "#e2e8f0", outline: "none", width: "100%", marginBottom: 8 }} />
+              ) : (
+                <h2 style={{ fontSize: 26, fontWeight: 300, margin: "0 0 8px", color: "#e2e8f0", lineHeight: 1.3, cursor: "pointer" }} onClick={() => setEditIntencao(true)}>
+                  {intencao}
+                </h2>
+              )}
+              <p style={{ fontSize: 13, color: "#4a4a6a", margin: "0 0 16px", fontStyle: "italic" }}>
+                {decisao.mensagemPrincipal}
+              </p>
+              <button onClick={() => setEditIntencao(true)} style={{ background: "#7c3aed20", border: "1px solid #7c3aed40", borderRadius: 20, padding: "7px 16px", color: "#a855f7", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                ✦ Definir intenção
+              </button>
             </div>
-          )}
-        </div>
 
-        {/* Foco do dia */}
-        <div style={{ ...card }}>
-          <div style={{ fontSize: 11, color: "#4a4a6a", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>Foco principal de hoje</div>
-          {editandoFoco ? (
-            <input autoFocus value={focoIntencao} onChange={e => setFocoIntencao(e.target.value)}
-              onBlur={() => { localStorage.setItem("foco-intencao", focoIntencao); setEditandoFoco(false) }}
-              onKeyDown={e => e.key === "Enter" && (localStorage.setItem("foco-intencao", focoIntencao), setEditandoFoco(false))}
-              style={{ width: "100%", background: "#12121f", border: "1px solid #7c3aed40", borderRadius: 8, padding: "8px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }} />
-          ) : (
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer" }} onClick={() => setEditandoFoco(true)}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#7c3aed18", border: "1px solid #7c3aed30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🎯</div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: "#e2e8f0", lineHeight: 1.4, marginBottom: 4 }}>{focoIntencao}</div>
-                <div style={{ fontSize: 11, color: "#4a4a6a" }}>Intenção do dia</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sequência */}
-        <div style={{ ...card }}>
-          <div style={{ fontSize: 11, color: "#4a4a6a", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Sequência consciente</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 20 }}>🔥</span>
-            <span style={{ fontSize: 24, fontWeight: 700, color: "#f59e0b" }}>{streak} dias</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#6b6b8a", marginBottom: 12 }}>Você está construindo algo incrível em silêncio.</div>
-          <div style={{ display: "flex", gap: 4 }}>
-            {ultimos7.map((d, i) => {
-              const temHabito = (habitos as any[]).some((h: any) => (h.historico || []).includes(d))
-              const ehHoje = d === hojeStr
-              return (
-                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: temHabito ? "#7c3aed" : "#1e1e35", boxShadow: temHabito ? "0 0 4px #7c3aed60" : "none", border: ehHoje ? "1px solid #a855f7" : "none" }} />
-                  <div style={{ fontSize: 8, color: "#3a3a5a" }}>{diasSem[new Date(d + "T00:00:00").getDay()]}</div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Linha 2 — 3 colunas */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-
-        {/* Agenda */}
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <span>📅</span>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Agenda de hoje</span>
-          </div>
-          {agendaHoje.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#4a4a6a", marginBottom: 12 }}>Nenhum compromisso hoje.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {agendaHoje.slice(0, 5).map((a, i) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 200 }}>
+              {[
+                { label: "Energia",        valor: energia,   cor: "#f59e0b", icone: "⚡" },
+                { label: "Clareza mental", valor: clareza,   cor: "#7c3aed", icone: "🧠" },
+                { label: "Motivação",      valor: motivacao, cor: "#10b981", icone: "✨" },
+              ].map((m, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: a.cor, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: "#6b6b8a", flexShrink: 0, width: 44 }}>{a.hora}</span>
-                  <span style={{ flex: 1, fontSize: 13, color: "#94a3b8" }}>{a.titulo}</span>
-                  <span style={{ fontSize: 11, color: "#3a3a5a" }}>{a.dur}</span>
+                  <span style={{ fontSize: 14 }}>{m.icone}</span>
+                  <span style={{ fontSize: 12, color: "#6b6b8a", minWidth: 110 }}>{m.label}</span>
+                  <div style={{ flex: 1, background: "#1a1a2e", borderRadius: 20, height: 5 }}>
+                    <div style={{ background: m.cor, height: 5, borderRadius: 20, width: `${m.valor * 10}%`, boxShadow: `0 0 6px ${m.cor}60`, transition: "width .4s" }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: m.cor, minWidth: 32, textAlign: "right" }}>{m.valor}/10</span>
+                </div>
+              ))}
+              {ultimaDiario
+                ? <div style={{ fontSize: 10, color: "#2a2a45", textAlign: "right" }}>baseado no diário</div>
+                : <div style={{ fontSize: 10, color: "#2a2a45", textAlign: "right" }}>registre no diário para dados reais</div>
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* Grid principal */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+          {/* Próxima ação */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 14 }}>✦</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Próxima ação importante</span>
+            </div>
+            {proximaTarefa ? (
+              <>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
+                  <div onClick={() => toggleTarefa(proximaTarefa.id)} style={{ width: 18, height: 18, borderRadius: 5, border: "1.5px solid #2e2e4e", flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
+                  <span style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.5 }}>{proximaTarefa.texto}</span>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                  {proximaTarefa.categoria && <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 20, background: "#7c3aed18", color: "#a855f7" }}>{proximaTarefa.categoria}</span>}
+                  {proximaTarefa.prioridade && <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 20, background: proximaTarefa.prioridade === "Alta" ? "#dc262618" : "#f59e0b18", color: proximaTarefa.prioridade === "Alta" ? "#f87171" : "#f59e0b" }}>{proximaTarefa.prioridade}</span>}
+                </div>
+                <p style={{ fontSize: 11, color: "#3a3a5a", margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>
+                  {decisao.prioridadeDoDia}
+                </p>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: "#4a4a6a" }}>
+                {tarefasHoje.length > 0 ? "✓ Todas as tarefas concluídas hoje!" : "Nenhuma tarefa para hoje."}
+              </div>
+            )}
+            <button onClick={() => router.push("/tarefas")} style={{ marginTop: 12, background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>
+              Ver todas as tarefas →
+            </button>
+          </div>
+
+          {/* Agenda */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>📅</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>Agenda de hoje</span>
+              </div>
+              <button onClick={() => router.push("/agenda")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver completa →</button>
+            </div>
+            {blocos.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhum compromisso hoje.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {blocos.slice(0, 4).map((b: any, i: number) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 11, color: "#4a4a6a", width: 38, flexShrink: 0 }}>{b.horaInicio}</span>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: b.cor || "#7c3aed", flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.titulo}</span>
+                    {b.categoria && <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 20, background: "#1a1a2e", color: "#4a4a6a", flexShrink: 0 }}>{b.categoria}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Projetos */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>🚀</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>Projetos ativos</span>
+              </div>
+              <button onClick={() => router.push("/projetos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todos →</button>
+            </div>
+            {projetosAtivos.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhum projeto ativo.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {projetosAtivos.map((p: any) => (
+                  <div key={p.id} onClick={() => router.push(`/projetos/${p.id}`)} style={{ cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                      <span style={{ fontSize: 15 }}>{p.icone}</span>
+                      <span style={{ flex: 1, fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nome}</span>
+                      <span style={{ fontSize: 11, color: p.cor || "#7c3aed" }}>{p.progresso || 0}%</span>
+                    </div>
+                    <div style={{ background: "#1a1a2e", borderRadius: 20, height: 3 }}>
+                      <div style={{ background: p.cor || "#7c3aed", height: 3, borderRadius: 20, width: `${p.progresso || 0}%`, transition: "width .4s" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => router.push("/projetos")} style={{ marginTop: 12, background: "none", border: "1px dashed #1e1e35", borderRadius: 8, padding: "6px 10px", color: "#4a4a6a", fontSize: 11, cursor: "pointer", width: "100%" }}>
+              + Novo projeto
+            </button>
+          </div>
+        </div>
+
+        {/* Metas + Tarefas */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+          {/* Metas */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>🎯</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>Metas em progresso</span>
+              </div>
+              <button onClick={() => router.push("/metas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todas →</button>
+            </div>
+            {metasAtivas.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhuma meta ativa.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {metasAtivas.map((m: any) => (
+                  <div key={m.id}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "75%" }}>{m.titulo}</span>
+                      <span style={{ fontSize: 11, color: "#7c3aed" }}>{m.progresso || 0}%</span>
+                    </div>
+                    <div style={{ background: "#1a1a2e", borderRadius: 20, height: 4 }}>
+                      <div style={{ background: "linear-gradient(90deg, #7c3aed, #a855f7)", height: 4, borderRadius: 20, width: `${m.progresso || 0}%`, transition: "width .4s" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tarefas hoje */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>✅</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>Tarefas de hoje</span>
+              </div>
+              <button onClick={() => router.push("/tarefas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todas →</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {tarefasHoje.slice(0, 5).map((t: any) => (
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div onClick={() => toggleTarefa(t.id)} style={{ width: 16, height: 16, borderRadius: 4, border: t.feita ? "none" : "1.5px solid #2e2e4e", background: t.feita ? "#7c3aed" : "transparent", flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff" }}>
+                    {t.feita ? "✓" : ""}
+                  </div>
+                  <span style={{ flex: 1, fontSize: 12, color: t.feita ? "#4a4a6a" : "#94a3b8", textDecoration: t.feita ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.texto}</span>
+                  <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 20, background: t.prioridade === "Alta" ? "#7c3aed18" : "#f59e0b18", color: t.prioridade === "Alta" ? "#a855f7" : "#f59e0b", flexShrink: 0 }}>{t.prioridade}</span>
                 </div>
               ))}
             </div>
-          )}
-          <button onClick={() => router.push("/agenda")} style={{ marginTop: 14, background: "none", border: "none", color: "#a855f7", fontSize: 12, cursor: "pointer", padding: 0 }}>
-            Ver agenda completa →
-          </button>
+            {mostrarNovaT ? (
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                <input autoFocus value={novaT} onChange={e => setNovaT(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && adicionarTarefa()}
+                  placeholder="Nova tarefa..."
+                  style={{ flex: 1, background: "#12121f", border: "1px solid #1e1e35", borderRadius: 7, padding: "6px 10px", color: "#e2e8f0", fontSize: 12, outline: "none" }} />
+                <button onClick={adicionarTarefa} style={{ background: "#7c3aed", border: "none", borderRadius: 7, padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: 12 }}>+</button>
+              </div>
+            ) : (
+              <button onClick={() => setMostrarNovaT(true)} style={{ marginTop: 10, background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>
+                + Nova tarefa
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Tarefas */}
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <span>☑️</span>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Tarefas prioritárias</span>
+        {/* Lembrete do sistema */}
+        <div style={{ background: "linear-gradient(135deg, #0f0f1c, #12111e)", border: `1px solid ${corEstado}25`, borderRadius: 14, padding: "18px 22px", display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: `linear-gradient(135deg, ${corEstado}, ${corEstado}aa)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, boxShadow: `0 0 16px ${corEstado}40` }}>
+            {decisao.estadoAtual === "leve" ? "🌱" : decisao.estadoAtual === "estavel" ? "💜" : decisao.estadoAtual === "sobrecarregado" ? "⚡" : "🌊"}
           </div>
-          {tarefasPendentes.length === 0 && (
-            <div style={{ fontSize: 13, color: "#4a4a6a", marginBottom: 12 }}>
-              {tarefasHoje.length > 0 ? "✓ Todas concluídas hoje!" : "Sem pendências hoje."}
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: corEstado }}>Lembrete do sistema</span>
+              <span style={{ fontSize: 10, color: corEstado }}>✦</span>
             </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {tarefasPendentes.slice(0, 4).map((t: any) => (
-              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div onClick={() => toggleTarefa(t.id)} style={{ width: 16, height: 16, borderRadius: 4, border: "1.5px solid #2e2e4e", flexShrink: 0, cursor: "pointer" }} />
-                <span style={{ flex: 1, fontSize: 13, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.texto}</span>
-                <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: t.prioridade === "Alta" ? "#7c3aed20" : "#d9770620", color: t.prioridade === "Alta" ? "#a855f7" : "#d97706", flexShrink: 0 }}>{t.prioridade}</span>
+            <p style={{ fontSize: 13, color: "#6b6b8a", margin: 0, lineHeight: 1.6, fontStyle: "italic" }}>{lembrete}</p>
+          </div>
+          <button onClick={() => router.push("/evolucao")} style={{ marginLeft: "auto", background: `${corEstado}15`, border: `1px solid ${corEstado}30`, borderRadius: 8, padding: "8px 14px", color: corEstado, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+            Ver minha evolução →
+          </button>
+        </div>
+      </div>
+
+      {/* COLUNA DIREITA */}
+      <div style={{ background: "#08080f", borderLeft: "1px solid #0f0f22", padding: "22px 18px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* Sobrecarga */}
+        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+            <span style={{ fontSize: 14 }}>✦</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Como está sua sobrecarga?</span>
+          </div>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 10 }}>
+            <div style={{ position: "relative", width: 86, height: 86, flexShrink: 0 }}>
+              <svg width="86" height="86" viewBox="0 0 86 86">
+                <circle cx="43" cy="43" r="38" fill="none" stroke="#1a1a2e" strokeWidth="7" />
+                <circle cx="43" cy="43" r="38" fill="none" stroke={sobrecargaCor} strokeWidth="7"
+                  strokeDasharray={`${circ * sobrecargaScore / 100} ${circ}`}
+                  strokeLinecap="round" transform="rotate(-90 43 43)"
+                  style={{ filter: `drop-shadow(0 0 5px ${sobrecargaCor}60)` }} />
+              </svg>
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: sobrecargaCor }}>{sobrecargaScore}%</div>
+                <div style={{ fontSize: 9, color: sobrecargaCor }}>{sobrecargaLabel}</div>
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 12, color: "#6b6b8a", lineHeight: 1.6, margin: "0 0 8px" }}>
+                {decisao.mensagemPrincipal}
+              </p>
+              {decisao.motivos.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  {decisao.motivos.map((m, i) => (
+                    <div key={i} style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 3, display: "flex", gap: 5 }}>
+                      <span>·</span><span>{m}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {decisao.modoProtecao && (
+                <button onClick={() => router.push("/tarefas")} style={{ background: "#7c3aed20", border: "1px solid #7c3aed30", borderRadius: 8, padding: "6px 12px", color: "#a855f7", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                  ✦ Reduzir sobrecarga
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* O que está ajudando */}
+        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 13 }}>✦</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>O que está te ajudando</span>
+            </div>
+            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver insights →</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {ajudando.map((a, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{a.icone}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 2 }}>{a.label}</div>
+                  <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5 }}>{a.descricao}</div>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981", flexShrink: 0 }}>{a.valor}</span>
               </div>
             ))}
           </div>
-          <button onClick={() => router.push("/tarefas")} style={{ marginTop: 14, background: "none", border: "1px solid #1e1e35", borderRadius: 8, padding: "6px 12px", color: "#6b6b8a", fontSize: 12, cursor: "pointer" }}>
-            + Adicionar tarefa
-          </button>
         </div>
 
-        {/* Hábitos */}
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>🔥</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Hábitos de hoje</span>
+        {/* O que pode estar prejudicando */}
+        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 13 }}>⚠️</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>O que pode estar prejudicando</span>
             </div>
-            <button onClick={() => router.push("/habitos")} style={{ background: "none", border: "none", color: "#a855f7", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todos</button>
+            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver insights →</button>
           </div>
-          {totalHabitos === 0 && <div style={{ fontSize: 13, color: "#4a4a6a" }}>Nenhum hábito cadastrado.</div>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {(habitos as any[]).slice(0, 5).map((h: any) => {
-              const feito = (h.historico || []).includes(hojeStr)
-              let hstreak = 0
-              const d = new Date(hojeStr)
-              while ((h.historico || []).includes(d.toISOString().slice(0, 10))) { hstreak++; d.setDate(d.getDate() - 1) }
-              return (
-                <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{h.icone}</span>
-                  <span style={{ flex: 1, fontSize: 13, color: feito ? "#e2e8f0" : "#6b6b8a" }}>{h.nome}</span>
-                  <div style={{ display: "flex", gap: 2 }}>
-                    {Array.from({ length: 7 }, (_, i) => (
-                      <div key={i} style={{ width: 6, height: 6, borderRadius: 2, background: i < Math.min(hstreak, 7) ? "#7c3aed" : "#1e1e35" }} />
-                    ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {prejudicando.map((p, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{p.icone}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 2 }}>{p.label}</div>
+                  <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5 }}>{p.descricao}</div>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#fb923c", flexShrink: 0 }}>{p.valor}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Hábitos rápidos */}
+        {habitos.length > 0 && (
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>🔥 Hábitos hoje</span>
+              <button onClick={() => router.push("/habitos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todos →</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {habitos.slice(0, 4).map((h: any) => {
+                const feito = (h.historico || []).includes(hoje)
+                return (
+                  <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 15 }}>{h.icone}</span>
+                    <span style={{ flex: 1, fontSize: 12, color: feito ? "#e2e8f0" : "#4a4a6a" }}>{h.nome}</span>
+                    <div style={{ width: 14, height: 14, borderRadius: 4, background: feito ? "#7c3aed" : "#1a1a2e", border: feito ? "none" : "1px solid #2e2e4e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff" }}>
+                      {feito ? "✓" : ""}
+                    </div>
                   </div>
-                  <span style={{ fontSize: 11, color: "#f59e0b", flexShrink: 0 }}>{hstreak}d</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Linha 3 — 3 colunas */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-
-        {/* Projetos */}
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Projetos ativos</span>
-            <button onClick={() => router.push("/projetos")} style={{ background: "none", border: "none", color: "#a855f7", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todos</button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {projetos.map((p: any) => (
-              <div key={p.id} onClick={() => router.push(`/projetos/${p.id}`)} style={{ background: "#12121f", border: `1px solid ${p.cor}30`, borderRadius: 12, padding: 12, cursor: "pointer" }}>
-                <div style={{ fontSize: 22, marginBottom: 6 }}>{p.icone}</div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 6 }}>{p.nome}</div>
-                <div style={{ background: "#1a1a2e", borderRadius: 20, height: 3, marginBottom: 4 }}>
-                  <div style={{ background: p.cor, height: 3, borderRadius: 20, width: `${p.progresso}%` }} />
-                </div>
-                <div style={{ fontSize: 11, color: p.cor }}>{p.progresso}%</div>
-              </div>
-            ))}
-            <div onClick={() => router.push("/projetos")} style={{ background: "transparent", border: "1px dashed #1e1e35", borderRadius: 12, padding: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 80 }}>
-              <span style={{ fontSize: 18, color: "#4a4a6a" }}>+</span>
-              <span style={{ fontSize: 11, color: "#4a4a6a" }}>Novo projeto</span>
+                )
+              })}
             </div>
           </div>
-        </div>
-
-        {/* Insight */}
-        <div style={{ ...card, display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Insight leve</div>
-          <div style={{ flex: 1, display: "flex", gap: 14, alignItems: "flex-start" }}>
-            <p style={{ margin: 0, fontSize: 14, color: "#94a3b8", lineHeight: 1.7, flex: 1 }}>
-              {habitosFeitosHoje.length >= totalHabitos * 0.7 && totalHabitos > 0
-                ? "Você parece mais estável após dias organizados. Sua rotina está fazendo diferença."
-                : streak > 5
-                ? `${streak} dias seguidos. A consistência é a forma mais silenciosa de evolução.`
-                : "Cada pequena ação de hoje é parte de algo maior que você está construindo."}
-            </p>
-            <span style={{ fontSize: 36, opacity: 0.4 }}>🧠</span>
-          </div>
-          <div style={{ fontSize: 11, color: "#3a3a5a", marginTop: 12 }}>Baseado nos últimos 7 dias.</div>
-        </div>
-
-        {/* Evolução */}
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Evolução silenciosa</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {evolucao.map((e, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: e.up ? "#05906918" : "#7c3aed18", border: `1px solid ${e.up ? "#05906930" : "#7c3aed30"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, color: e.up ? "#059669" : "#a855f7" }}>
-                  {e.up ? "↑" : "↓"}
-                </div>
-                <span style={{ flex: 1, fontSize: 12, color: "#6b6b8a" }}>{e.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: e.up ? "#059669" : "#7c3aed" }}>{e.valor}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 10, color: "#3a3a5a", marginTop: 12 }}>Comparado às últimas 4 semanas</div>
-        </div>
-      </div>
-
-      {/* Linha 4 — 2 colunas */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-
-        {/* Diário */}
-        <div style={{ ...card, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#7c3aed18", border: "1px solid #7c3aed30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✍️</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 3 }}>
-              Diário recente · {hoje.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}
-            </div>
-            <div style={{ fontSize: 13, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {diarioEntradas[0]?.texto || "Nenhuma entrada recente. Registre como foi o seu dia."}
-            </div>
-          </div>
-          <button onClick={() => router.push("/diario")} style={{ background: "none", border: "none", color: "#a855f7", fontSize: 12, cursor: "pointer", padding: 0, flexShrink: 0 }}>
-            Ver diário →
-          </button>
-        </div>
-
-        {/* Notas rápidas */}
-        <div style={{ ...card, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#12121f", border: "1px solid #1e1e35", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📋</div>
-          <input value={notaRapida} onChange={e => setNotaRapida(e.target.value)} placeholder="Anote algo importante..."
-            style={{ flex: 1, background: "none", border: "none", color: "#e2e8f0", fontSize: 13, outline: "none" }} />
-          <button onClick={() => { if (notaRapida.trim()) { alert("Nota salva!"); setNotaRapida("") } }}
-            style={{ width: 32, height: 32, borderRadius: 8, background: "#7c3aed", border: "none", color: "#fff", cursor: "pointer", fontSize: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            +
-          </button>
-        </div>
+        )}
       </div>
     </div>
   )
