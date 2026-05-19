@@ -3,65 +3,68 @@
 import { useState, useEffect, useMemo } from "react"
 import { usePlanner } from "./context/PlannerContext"
 import { useRouter } from "next/navigation"
+import { getFeedbackState } from "./lib/feedbackEngine"
 
 const estadoConfig = {
-  leve: { cor: "#10b981", icone: "🌱", bordaHero: "#10b98120", badge: "Dia leve" },
-  estavel: { cor: "#7c3aed", icone: "💜", bordaHero: "#7c3aed20", badge: "Estável" },
-  sobrecarregado: { cor: "#f59e0b", icone: "⚡", bordaHero: "#f59e0b20", badge: "Atenção" },
-  critico: { cor: "#fb923c", icone: "🌊", bordaHero: "#fb923c20", badge: "Modo proteção" },
+  leve:     { cor: "#10b981", icone: "🌱", badge: "Dia leve",       bordaHero: "#10b98120" },
+  estavel:  { cor: "#7c3aed", icone: "💜", badge: "Estável",         bordaHero: "#7c3aed20" },
+  atencao:  { cor: "#f59e0b", icone: "⚡", badge: "Atenção",         bordaHero: "#f59e0b20" },
+  protecao: { cor: "#fb923c", icone: "🌊", badge: "Modo proteção",   bordaHero: "#fb923c20" },
 }
 
-function Explicacao({ decisao, corEstado }: { decisao: any; corEstado: string }) {
+function BotaoFeedback({ targetId, targetType, onFeedback }: { targetId: string; targetType: any; onFeedback: (r: "fez_sentido" | "nao_fez_sentido") => void }) {
+  const [resp, setResp] = useState<"sim" | "nao" | null>(() => getFeedbackState(targetId))
+  if (resp !== null) return (
+    <span style={{ fontSize: 10, color: "#3a3a5a", fontStyle: "italic" }}>
+      {resp === "sim" ? "✓ Obrigada pelo feedback" : "✓ Anotado"}
+    </span>
+  )
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 10, color: "#3a3a5a" }}>Fez sentido?</span>
+      <button onClick={() => { setResp("sim"); onFeedback("fez_sentido") }} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "2px 10px", color: "#059669", fontSize: 10, cursor: "pointer" }}>Sim</button>
+      <button onClick={() => { setResp("nao"); onFeedback("nao_fez_sentido") }} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "2px 10px", color: "#f59e0b", fontSize: 10, cursor: "pointer" }}>Não muito</button>
+    </div>
+  )
+}
+
+function Explicacao({ decisao, inteligencia, corEstado }: { decisao: any; inteligencia: any; corEstado: string }) {
   const [aberto, setAberto] = useState(false)
   const [feedback, setFeedback] = useState<"sim" | "nao" | null>(null)
 
-  const dadosConsiderados = [
-    decisao.sobrecargaScore < 40
-      ? "sua sobrecarga está baixa"
-      : decisao.sobrecargaScore < 70
-      ? "sua sobrecarga está moderada"
-      : "sua sobrecarga está alta",
-    decisao.energiaScore >= 60
-      ? "sua energia está boa"
-      : decisao.energiaScore >= 40
-      ? "sua energia está média"
-      : "sua energia está baixa",
-    decisao.clarezaScore >= 60
-      ? "sua clareza está acima da média"
-      : "sua clareza pode melhorar com foco",
-    decisao.estabilidadeScore >= 60
-      ? "seu sistema parece estável hoje"
-      : "há sinais de instabilidade nos registros",
-    ...decisao.motivos.slice(0, 2),
+  const dados = [
+    decisao.sobrecargaScore < 40 ? "sua sobrecarga está baixa" : decisao.sobrecargaScore < 70 ? "sua sobrecarga está moderada" : "sua sobrecarga está alta",
+    decisao.energiaScore >= 60 ? "sua energia está boa" : decisao.energiaScore >= 40 ? "sua energia está média" : "sua energia está baixa",
+    decisao.clarezaScore >= 60 ? "sua clareza está acima da média" : "sua clareza pode melhorar com foco",
+    ...decisao.motivos.slice(0, 1),
   ].slice(0, 4)
 
-  const confianca = decisao.motivos.length >= 2
-    ? "alta"
-    : decisao.motivos.length === 1
-    ? "moderada"
-    : "baseada em padrões gerais"
+  const confianca = inteligencia.motivos.length >= 2 ? "alta" : "moderada"
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <button
-        onClick={() => setAberto(!aberto)}
-        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
+      <button onClick={() => setAberto(!aberto)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 11, color: "#3a3a5a" }}>{aberto ? "▾" : "▸"}</span>
         <span style={{ fontSize: 11, color: "#3a3a5a", fontStyle: "italic" }}>Por que o sistema sugeriu isso?</span>
       </button>
       {aberto && (
         <div style={{ background: "#0a0a14", border: "1px solid #0f0f22", borderRadius: 12, padding: "14px 16px", marginTop: 8 }}>
           <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 10 }}>O sistema considerou:</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-            {dadosConsiderados.map((d, i) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+            {dados.map((d, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ width: 4, height: 4, borderRadius: "50%", background: corEstado, flexShrink: 0 }} />
                 <span style={{ fontSize: 11, color: "#6b6b8a" }}>{d}</span>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 10, color: "#3a3a5a", marginBottom: 12 }}>
-            Confiança da sugestão: <span style={{ color: corEstado }}>{confianca}</span>
+          {inteligencia.motivos.slice(0, 2).map((m: string, i: number) => (
+            <div key={i} style={{ fontSize: 10, color: "#3a3a5a", marginBottom: 3, display: "flex", gap: 4 }}>
+              <span style={{ color: corEstado }}>·</span><span>{m}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 10, color: "#3a3a5a", margin: "8px 0" }}>
+            Confiança: <span style={{ color: corEstado }}>{confianca}</span>
           </div>
           {feedback === null ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -71,9 +74,7 @@ function Explicacao({ decisao, corEstado }: { decisao: any; corEstado: string })
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "#4a4a6a", fontStyle: "italic" }}>
-              {feedback === "sim"
-                ? "✓ Obrigado. O sistema vai continuar aprendendo com você."
-                : "✓ Anotado. Isso ajuda a melhorar as sugestões."}
+              {feedback === "sim" ? "✓ O sistema vai continuar aprendendo com você." : "✓ Anotado. Isso ajuda a calibrar as sugestões."}
             </div>
           )}
         </div>
@@ -83,7 +84,7 @@ function Explicacao({ decisao, corEstado }: { decisao: any; corEstado: string })
 }
 
 export default function Central() {
-  const { data, setTarefas, analise, decisao } = usePlanner()
+  const { data, setTarefas, analise, decisao, inteligencia, intervencoes, previsao, registrarFeedback } = usePlanner()
   const router = useRouter()
 
   const tarefas = (data.tarefas  || []) as any[]
@@ -106,21 +107,26 @@ export default function Central() {
     const p = localStorage.getItem("projetos-v1")
     if (p) setProjetos(JSON.parse(p))
     const b = localStorage.getItem("agenda-v3")
-    if (b) setBlocos(JSON.parse(b)
-      .filter((bl: any) => bl.data === hoje)
-      .sort((a: any, z: any) => (a.horaInicio || "").localeCompare(z.horaInicio || "")))
+    if (b) setBlocos(JSON.parse(b).filter((bl: any) => bl.data === hoje).sort((a: any, z: any) => (a.horaInicio || "").localeCompare(z.horaInicio || "")))
     const i = localStorage.getItem("foco-intencao")
     if (i) setIntencao(i)
   }, [hoje])
 
-  const config       = estadoConfig[decisao.estadoAtual]
-  const modoProtecao = decisao.modoProtecao
-  const corEstado    = config.cor
+  // ── Do orchestrator ──
+  const config          = estadoConfig[inteligencia.estadoGeral]
+  const corEstado       = config.cor
+  const modoProtecao    = inteligencia.mostrarModoProtecao
+  const blocoOculto     = (bloco: string) => inteligencia.blocosOcultos.includes(bloco)
+  const blocoPrioritario = (bloco: string) => inteligencia.blocosPrioritarios.includes(bloco)
 
+  // ── Intervenção principal ──
+  const intervencaoPrinc = intervencoes[0]
+
+  // ── Métricas ──
   const tarefasHoje    = tarefas.filter((t: any) => t.data === hoje)
   const tarefasPend    = tarefasHoje.filter((t: any) => !t.feita)
   const proximaTarefa  = tarefasPend[0]
-  const projetosAtivos = projetos.filter((p: any) => p.status === "Em andamento").slice(0, 3)
+  const projetosAtivos = projetos.filter((p: any) => p.status === "Em andamento").slice(0, modoProtecao ? 0 : 3)
   const metasAtivas    = metas.filter((m: any) => (m.progresso || 0) < 100).slice(0, 3)
 
   const ultimaDiario = diario.filter((e: any) => e.data === hoje)[0]
@@ -132,12 +138,7 @@ export default function Central() {
   const ajudando = useMemo(() => {
     const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
     analise.correlacoes.filter(c => c.tipo === "positiva").slice(0, 3).forEach(c => {
-      lista.push({
-        icone: c.origem === "exercicio" ? "🏃" : c.origem === "sono" ? "🌙" : c.origem === "rotina" ? "📅" : "✨",
-        label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1),
-        descricao: c.descricao,
-        valor: `+${Math.round(c.intensidade * 100)}%`
-      })
+      lista.push({ icone: c.origem === "exercicio" ? "🏃" : c.origem === "sono" ? "🌙" : c.origem === "rotina" ? "📅" : "✨", label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1), descricao: c.descricao, valor: `+${Math.round(c.intensidade * 100)}%` })
     })
     if (!lista.length) {
       lista.push({ icone: "🌙", label: "Sono",     descricao: "Noites bem dormidas parecem melhorar sua clareza mental.", valor: "+28%" })
@@ -149,16 +150,11 @@ export default function Central() {
   const prejudicando = useMemo(() => {
     const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
     analise.correlacoes.filter(c => c.tipo === "negativa").slice(0, 3).forEach(c => {
-      lista.push({
-        icone: c.origem === "tela" ? "📱" : "🌀",
-        label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1),
-        descricao: c.descricao,
-        valor: `-${Math.round(c.intensidade * 100)}%`
-      })
+      lista.push({ icone: c.origem === "tela" ? "📱" : "🌀", label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1), descricao: c.descricao, valor: `-${Math.round(c.intensidade * 100)}%` })
     })
     if (!lista.length) {
       lista.push({ icone: "📱", label: "Excesso de tela", descricao: "Excesso de tela parece aumentar ansiedade nos dias seguintes.", valor: "-21%" })
-      lista.push({ icone: "😴", label: "Pouco sono",      descricao: "Dormir menos de 6h impacta o humor do dia seguinte.",          valor: "-17%" })
+      lista.push({ icone: "😴", label: "Pouco sono",      descricao: "Dormir menos de 6h impacta o humor do dia seguinte.",         valor: "-17%" })
     }
     return lista.slice(0, 3)
   }, [analise.correlacoes])
@@ -207,6 +203,14 @@ export default function Central() {
           </div>
         </div>
 
+        {/* Alerta suave do orchestrator */}
+        {inteligencia.alertaSuave && (
+          <div style={{ background: `${corEstado}10`, border: `1px solid ${corEstado}30`, borderRadius: 10, padding: "8px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 13 }}>{config.icone}</span>
+            <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>{inteligencia.alertaSuave}</span>
+          </div>
+        )}
+
         {/* Modo proteção banner */}
         {modoProtecao && (
           <div style={{ background: `${corEstado}12`, border: `1px solid ${corEstado}35`, borderRadius: 12, padding: "12px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
@@ -237,8 +241,9 @@ export default function Central() {
                   {intencao}
                 </h2>
               )}
+              {/* Mensagem do orchestrator */}
               <p style={{ fontSize: 13, color: "#6b6b8a", margin: "0 0 16px", fontStyle: "italic", lineHeight: 1.6 }}>
-                {decisao.mensagemPrincipal}
+                {inteligencia.mensagemCentral}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setEditIntencao(true)} style={{ background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 20, padding: "7px 16px", color: corEstado, fontSize: 12, cursor: "pointer" }}>
@@ -271,14 +276,18 @@ export default function Central() {
           </div>
         </div>
 
-        {/* O que fazer agora */}
+        {/* O que fazer agora — do orchestrator */}
         <div style={{ background: `linear-gradient(135deg, ${corEstado}10, ${corEstado}06)`, border: `1px solid ${corEstado}30`, borderRadius: 14, padding: "14px 20px", marginBottom: 8, display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 38, height: 38, borderRadius: "50%", background: `${corEstado}20`, border: `1.5px solid ${corEstado}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
             {config.icone}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>O que fazer agora</div>
-            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5 }}>{decisao.sugestaoImediata}</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 6 }}>
+              {inteligencia.acaoDestacada || decisao.sugestaoImediata}
+            </div>
+            <BotaoFeedback targetId="acao-agora" targetType="decision"
+              onFeedback={r => registrarFeedback({ targetId: "acao-agora", targetType: "decision", resposta: r })} />
           </div>
           {!modoProtecao && (
             <button onClick={() => router.push("/foco")} style={{ background: `${corEstado}20`, border: `1px solid ${corEstado}40`, borderRadius: 8, padding: "7px 14px", color: corEstado, fontSize: 11, cursor: "pointer", flexShrink: 0 }}>
@@ -287,22 +296,37 @@ export default function Central() {
           )}
         </div>
 
-        {/* Explicação da sugestão */}
-        <Explicacao decisao={decisao} corEstado={corEstado} />
+        <Explicacao decisao={decisao} inteligencia={inteligencia} corEstado={corEstado} />
+
+        {/* Intervenção principal — do interventionEngine */}
+        {intervencaoPrinc && !blocoOculto("sugestoes_automaticas") && (
+          <div style={{ background: "#0a0a18", border: `1px solid ${corEstado}25`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: `${corEstado}18`, border: `1px solid ${corEstado}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+              {intervencaoPrinc.tipo === "foco" ? "🎯" : intervencaoPrinc.tipo === "protecao" ? "🛡️" : intervencaoPrinc.tipo === "descanso" ? "☁️" : intervencaoPrinc.tipo === "reducao" ? "📋" : intervencaoPrinc.tipo === "expansao" ? "🚀" : "📅"}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 3 }}>{intervencaoPrinc.titulo}</div>
+              <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5, marginBottom: 6 }}>{intervencaoPrinc.descricao}</div>
+              <div style={{ fontSize: 10, color: corEstado, fontStyle: "italic", marginBottom: 6 }}>{intervencaoPrinc.acaoPrincipal}</div>
+              <BotaoFeedback targetId={intervencaoPrinc.id} targetType="intervention"
+                onFeedback={r => registrarFeedback({ targetId: intervencaoPrinc.id, targetType: "intervention", resposta: r })} />
+            </div>
+          </div>
+        )}
 
         {/* Grid principal */}
         <div style={{ display: "grid", gridTemplateColumns: modoProtecao ? "1fr 1fr" : "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
 
-          {/* Próxima ação */}
+          {/* Próxima ação — prioridade do orchestrator */}
           <div style={{ background: "#0f0f1c", border: `1px solid ${modoProtecao ? corEstado + "40" : "#1a1a2e"}`, borderRadius: 14, padding: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 14 }}>✦</span>
+              <span>✦</span>
               <span style={{ fontSize: 13, fontWeight: 500 }}>{modoProtecao ? "Uma prioridade só" : "Próxima ação importante"}</span>
             </div>
             {modoProtecao ? (
               <div>
                 <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 12px", fontStyle: "italic" }}>
-                  {decisao.prioridadeDoDia}
+                  {inteligencia.prioridadeAtual}
                 </p>
                 {proximaTarefa && (
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", background: `${corEstado}10`, borderRadius: 10, border: `1px solid ${corEstado}25` }}>
@@ -330,7 +354,7 @@ export default function Central() {
                   </div>
                 )}
                 <p style={{ fontSize: 11, color: "#3a3a5a", margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>
-                  {decisao.prioridadeDoDia}
+                  {inteligencia.prioridadeAtual}
                 </p>
               </>
             )}
@@ -364,7 +388,7 @@ export default function Central() {
           </div>
 
           {/* Projetos — oculto no modo proteção */}
-          {!modoProtecao && (
+          {!modoProtecao && !blocoOculto("projetos") && (
             <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -395,8 +419,8 @@ export default function Central() {
           )}
         </div>
 
-        {/* Metas + Tarefas */}
-        {!modoProtecao && (
+        {/* Metas + Tarefas — ocultos no modo proteção */}
+        {!modoProtecao && !blocoOculto("metas") && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -461,7 +485,7 @@ export default function Central() {
           </div>
         )}
 
-        {/* Modo proteção: tarefas simplificadas */}
+        {/* Modo proteção: só tarefas essenciais */}
         {modoProtecao && (
           <div style={{ background: "#0f0f1c", border: `1px solid ${corEstado}25`, borderRadius: 14, padding: 18, marginBottom: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10, color: "#94a3b8" }}>Tarefas essenciais de hoje</div>
@@ -479,14 +503,18 @@ export default function Central() {
           </div>
         )}
 
-        {/* Lembrete do sistema */}
+        {/* Lembrete do sistema — usa insight do orchestrator */}
         <div style={{ background: "linear-gradient(135deg, #0f0f1c, #12111e)", border: `1px solid ${corEstado}20`, borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg, ${corEstado}, ${corEstado}aa)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, boxShadow: `0 0 14px ${corEstado}35` }}>
             {config.icone}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, marginBottom: 3 }}>Lembrete do sistema ✦</div>
-            <p style={{ fontSize: 12, color: "#6b6b8a", margin: 0, lineHeight: 1.6, fontStyle: "italic" }}>{decisao.sugestaoImediata}</p>
+            <p style={{ fontSize: 12, color: "#6b6b8a", margin: "0 0 6px", lineHeight: 1.6, fontStyle: "italic" }}>
+              {inteligencia.insightPrincipal}
+            </p>
+            <BotaoFeedback targetId="insight-principal" targetType="insight"
+              onFeedback={r => registrarFeedback({ targetId: "insight-principal", targetType: "insight", resposta: r })} />
           </div>
           <button onClick={() => router.push("/evolucao")} style={{ background: `${corEstado}15`, border: `1px solid ${corEstado}30`, borderRadius: 8, padding: "7px 14px", color: corEstado, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
             Ver evolução →
@@ -500,7 +528,7 @@ export default function Central() {
         {/* Sobrecarga */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-            <span style={{ fontSize: 13 }}>✦</span>
+            <span>✦</span>
             <span style={{ fontSize: 13, fontWeight: 500 }}>Como está sua sobrecarga?</span>
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
@@ -519,19 +547,15 @@ export default function Central() {
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 12, color: "#6b6b8a", lineHeight: 1.6, margin: "0 0 8px" }}>
-                {decisao.mensagemPrincipal}
+                {inteligencia.mensagemCentral}
               </p>
-              {decisao.motivos.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  {decisao.motivos.map((m, i) => (
-                    <div key={i} style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 3, display: "flex", gap: 4 }}>
-                      <span style={{ color: corEstado }}>·</span><span>{m}</span>
-                    </div>
-                  ))}
+              {inteligencia.motivos.slice(0, 2).map((m, i) => (
+                <div key={i} style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 3, display: "flex", gap: 4 }}>
+                  <span style={{ color: corEstado }}>·</span><span>{m}</span>
                 </div>
-              )}
+              ))}
               {modoProtecao && (
-                <button onClick={() => router.push("/tarefas")} style={{ background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 8, padding: "5px 12px", color: corEstado, fontSize: 11, cursor: "pointer" }}>
+                <button onClick={() => router.push("/tarefas")} style={{ marginTop: 8, background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 8, padding: "5px 12px", color: corEstado, fontSize: 11, cursor: "pointer" }}>
                   Reduzir sobrecarga
                 </button>
               )}
@@ -539,11 +563,35 @@ export default function Central() {
           </div>
         </div>
 
+        {/* Previsão — do forecastEngine */}
+        {(previsao.riscoSobrecarga > 30 || previsao.tendenciaClareza !== "estavel") && (
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>📡 Tendência detectada</div>
+            <p style={{ fontSize: 12, color: "#6b6b8a", lineHeight: 1.6, margin: "0 0 10px", fontStyle: "italic" }}>
+              {previsao.mensagemPrevisiva}
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { label: "Clareza", tend: previsao.tendenciaClareza },
+                { label: "Energia", tend: previsao.tendenciaEnergia },
+              ].map((t, i) => (
+                <div key={i} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: t.tend === "subindo" ? "#05906918" : t.tend === "caindo" ? "#dc262618" : "#1a1a2e", color: t.tend === "subindo" ? "#059669" : t.tend === "caindo" ? "#f87171" : "#6b6b8a", border: `1px solid ${t.tend === "subindo" ? "#05906930" : t.tend === "caindo" ? "#dc262630" : "#1e1e35"}` }}>
+                  {t.label} {t.tend === "subindo" ? "↑" : t.tend === "caindo" ? "↓" : "→"}
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <BotaoFeedback targetId="previsao-tendencia" targetType="forecast"
+                onFeedback={r => registrarFeedback({ targetId: "previsao-tendencia", targetType: "forecast", resposta: r })} />
+            </div>
+          </div>
+        )}
+
         {/* O que está ajudando */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 13, fontWeight: 500 }}>✦ O que está te ajudando</span>
-            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver insights →</button>
+            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {ajudando.map((a, i) => (
