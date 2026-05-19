@@ -5,6 +5,7 @@ import { analisarDados, ResultadoAnalise } from "../lib/patternEngine"
 import { generateDecision, DecisionState } from "../lib/decisionEngine"
 import { generateMemories, BehavioralMemory } from "../lib/memoryEngine"
 import { generateForecast, ForecastState } from "../lib/forecastEngine"
+import { generateInterventions, Intervention } from "../lib/interventionEngine"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -49,6 +50,7 @@ type PlannerContextType = {
   decisao: DecisionState
   memorias: BehavioralMemory[]
   previsao: ForecastState
+  intervencoes: Intervention[]
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
   setHabitos: (h: Habito[] | any[]) => void
@@ -183,6 +185,26 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }
   }, [data.diario, data.habitos, data.tarefas, data.sessoesFoco, analise, decisao, memorias])
 
+  // ── Intervenções inteligentes ──
+  const intervencoes = useMemo((): Intervention[] => {
+    if (typeof window === "undefined") return []
+    try {
+      return generateInterventions({
+        analise,
+        decisao,
+        memorias,
+        previsao,
+        tarefas: data.tarefas,
+        habitos: data.habitos,
+        diario: data.diario,
+        sessoesFoco: data.sessoesFoco,
+        projetos,
+      })
+    } catch {
+      return []
+    }
+  }, [analise, decisao, memorias, previsao, data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos])
+
   function setTarefas(tarefas: any[]) { setData(d => ({ ...d, tarefas })) }
   function setMetas(metas: Meta[]) { setData(d => ({ ...d, metas })) }
   function setHabitos(habitos: any[]) { setData(d => ({ ...d, habitos })) }
@@ -193,7 +215,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlannerContext.Provider value={{
-      data, analise, decisao, memorias, previsao,
+      data, analise, decisao, memorias, previsao, intervencoes,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
     }}>
