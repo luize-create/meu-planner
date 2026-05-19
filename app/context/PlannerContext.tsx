@@ -9,6 +9,7 @@ import { generateInterventions, Intervention } from "../lib/interventionEngine"
 import { generatePersonalProfile, PersonalProfile } from "../lib/personalProfileEngine"
 import { carregarFeedbacks, generateFeedbackSummary, FeedbackSummary, salvarFeedback, UserFeedback } from "../lib/feedbackEngine"
 import { generateIntelligenceSummary, IntelligenceSummary } from "../lib/intelligenceOrchestrator"
+import { generateUIState, UIState } from "../lib/uiStateEngine"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -57,6 +58,7 @@ type PlannerContextType = {
   perfil: PersonalProfile
   feedbackSummary: FeedbackSummary
   inteligencia: IntelligenceSummary
+  uiState: UIState
   registrarFeedback: (fb: Omit<UserFeedback, "id" | "data">) => void
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
@@ -135,6 +137,21 @@ const defaultInteligencia: IntelligenceSummary = {
   motivos: [],
 }
 
+const defaultUIState: UIState = {
+  modo: "leve",
+  intensidadeGlow: 0.65,
+  nivelInformacao: "medio",
+  animacoes: "suaves",
+  mostrarBlocosSecundarios: true,
+  atmosfera: "calma",
+  mensagemAtmosferica: "Continue no ritmo. O básico está funcionando.",
+  corPrimaria: "#7c3aed",
+  corSecundaria: "#a855f7",
+  opacidadeBackground: 0.85,
+  espacoVazio: "normal",
+  destaquePrincipal: "foco",
+}
+
 const PlannerContext = createContext<PlannerContextType>({} as PlannerContextType)
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
@@ -157,7 +174,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     setFeedbacks(carregarFeedbacks())
   }, [])
 
-  // ── Análise de padrões ──
   const analise = useMemo((): ResultadoAnalise => {
     if (typeof window === "undefined") return defaultAnalise
     try {
@@ -168,7 +184,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return defaultAnalise }
   }, [data.habitos, data.sessoesFoco, data.tarefas, data.diario, projetos])
 
-  // ── Decisão inteligente ──
   const decisao = useMemo((): DecisionState => {
     if (typeof window === "undefined") return defaultDecisao
     try {
@@ -180,7 +195,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return defaultDecisao }
   }, [data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos, analise])
 
-  // ── Memória comportamental ──
   const memorias = useMemo((): BehavioralMemory[] => {
     if (typeof window === "undefined") return []
     try {
@@ -192,7 +206,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return [] }
   }, [data.diario, data.habitos, data.sessoesFoco, data.tarefas, projetos, analise, decisao])
 
-  // ── Previsão comportamental ──
   const previsao = useMemo((): ForecastState => {
     if (typeof window === "undefined") return defaultPrevisao
     try {
@@ -204,7 +217,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return defaultPrevisao }
   }, [data.diario, data.habitos, data.tarefas, data.sessoesFoco, analise, decisao, memorias])
 
-  // ── Intervenções inteligentes ──
   const intervencoes = useMemo((): Intervention[] => {
     if (typeof window === "undefined") return []
     try {
@@ -217,7 +229,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return [] }
   }, [analise, decisao, memorias, previsao, data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos])
 
-  // ── Perfil pessoal ──
   const perfil = useMemo((): PersonalProfile => {
     if (typeof window === "undefined") return defaultPerfil
     try {
@@ -230,13 +241,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return defaultPerfil }
   }, [analise, decisao, memorias, previsao, intervencoes, data.diario, data.habitos, data.tarefas, data.sessoesFoco, projetos])
 
-  // ── Resumo de feedback ──
   const feedbackSummary = useMemo((): FeedbackSummary => {
     try { return generateFeedbackSummary(feedbacks) }
     catch { return defaultFeedbackSummary }
   }, [feedbacks])
 
-  // ── Orchestrator — decide o que mostrar ──
   const inteligencia = useMemo((): IntelligenceSummary => {
     if (typeof window === "undefined") return defaultInteligencia
     try {
@@ -247,7 +256,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return defaultInteligencia }
   }, [analise, decisao, memorias, previsao, intervencoes, perfil, feedbackSummary])
 
-  // ── Registrar feedback ──
+  const uiState = useMemo((): UIState => {
+    if (typeof window === "undefined") return defaultUIState
+    try {
+      return generateUIState({ decisao, previsao, inteligencia, perfil })
+    } catch { return defaultUIState }
+  }, [decisao, previsao, inteligencia, perfil])
+
   function registrarFeedback(fb: Omit<UserFeedback, "id" | "data">) {
     const novo = salvarFeedback(fb)
     setFeedbacks(prev => {
@@ -269,7 +284,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   return (
     <PlannerContext.Provider value={{
       data, analise, decisao, memorias, previsao,
-      intervencoes, perfil, feedbackSummary, inteligencia,
+      intervencoes, perfil, feedbackSummary, inteligencia, uiState,
       registrarFeedback,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
