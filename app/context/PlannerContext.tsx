@@ -8,6 +8,7 @@ import { generateForecast, ForecastState } from "../lib/forecastEngine"
 import { generateInterventions, Intervention } from "../lib/interventionEngine"
 import { generatePersonalProfile, PersonalProfile } from "../lib/personalProfileEngine"
 import { carregarFeedbacks, generateFeedbackSummary, FeedbackSummary, salvarFeedback, UserFeedback } from "../lib/feedbackEngine"
+import { generateIntelligenceSummary, IntelligenceSummary } from "../lib/intelligenceOrchestrator"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -55,6 +56,7 @@ type PlannerContextType = {
   intervencoes: Intervention[]
   perfil: PersonalProfile
   feedbackSummary: FeedbackSummary
+  inteligencia: IntelligenceSummary
   registrarFeedback: (fb: Omit<UserFeedback, "id" | "data">) => void
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
@@ -120,6 +122,17 @@ const defaultFeedbackSummary: FeedbackSummary = {
   sugestoesMenosUteis: [],
   confiancaDoSistema: "baixa",
   mensagem: "Ainda sem feedbacks.",
+}
+
+const defaultInteligencia: IntelligenceSummary = {
+  mensagemCentral: "Seu sistema parece estável. Continue protegendo o básico.",
+  prioridadeAtual: "Manter a consistência de hoje.",
+  insightPrincipal: "Continue registrando para insights personalizados aparecerem aqui.",
+  estadoGeral: "estavel",
+  mostrarModoProtecao: false,
+  blocosPrioritarios: ["acao_imediata", "agenda", "habitos", "projetos"],
+  blocosOcultos: [],
+  motivos: [],
 }
 
 const PlannerContext = createContext<PlannerContextType>({} as PlannerContextType)
@@ -219,10 +232,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   // ── Resumo de feedback ──
   const feedbackSummary = useMemo((): FeedbackSummary => {
-    try {
-      return generateFeedbackSummary(feedbacks)
-    } catch { return defaultFeedbackSummary }
+    try { return generateFeedbackSummary(feedbacks) }
+    catch { return defaultFeedbackSummary }
   }, [feedbacks])
+
+  // ── Orchestrator — decide o que mostrar ──
+  const inteligencia = useMemo((): IntelligenceSummary => {
+    if (typeof window === "undefined") return defaultInteligencia
+    try {
+      return generateIntelligenceSummary({
+        analise, decisao, memorias, previsao,
+        intervencoes, perfil, feedbackSummary,
+      })
+    } catch { return defaultInteligencia }
+  }, [analise, decisao, memorias, previsao, intervencoes, perfil, feedbackSummary])
 
   // ── Registrar feedback ──
   function registrarFeedback(fb: Omit<UserFeedback, "id" | "data">) {
@@ -246,7 +269,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   return (
     <PlannerContext.Provider value={{
       data, analise, decisao, memorias, previsao,
-      intervencoes, perfil, feedbackSummary, registrarFeedback,
+      intervencoes, perfil, feedbackSummary, inteligencia,
+      registrarFeedback,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
     }}>
