@@ -7,6 +7,7 @@ import { generateMemories, BehavioralMemory } from "../lib/memoryEngine"
 import { generateForecast, ForecastState } from "../lib/forecastEngine"
 import { generateInterventions, Intervention } from "../lib/interventionEngine"
 import { generatePersonalProfile, PersonalProfile } from "../lib/personalProfileEngine"
+import { carregarFeedbacks, generateFeedbackSummary, FeedbackSummary, salvarFeedback, UserFeedback } from "../lib/feedbackEngine"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -53,6 +54,8 @@ type PlannerContextType = {
   previsao: ForecastState
   intervencoes: Intervention[]
   perfil: PersonalProfile
+  feedbackSummary: FeedbackSummary
+  registrarFeedback: (fb: Omit<UserFeedback, "id" | "data">) => void
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
   setHabitos: (h: Habito[] | any[]) => void
@@ -108,6 +111,17 @@ const defaultPerfil: PersonalProfile = {
   resumoHumano: "Continue registrando para o sistema aprender como você funciona.",
 }
 
+const defaultFeedbackSummary: FeedbackSummary = {
+  totalFeedbacks: 0,
+  acertos: 0,
+  erros: 0,
+  taxaAcerto: 0,
+  sugestoesMaisUteis: [],
+  sugestoesMenosUteis: [],
+  confiancaDoSistema: "baixa",
+  mensagem: "Ainda sem feedbacks.",
+}
+
 const PlannerContext = createContext<PlannerContextType>({} as PlannerContextType)
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
@@ -118,6 +132,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   })
 
   const [projetos, setProjetos] = useState<any[]>([])
+  const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([])
 
   useEffect(() => {
     localStorage.setItem("planner-global", JSON.stringify(data))
@@ -126,6 +141,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const p = localStorage.getItem("projetos-v1")
     if (p) setProjetos(JSON.parse(p))
+    setFeedbacks(carregarFeedbacks())
   }, [])
 
   // ── Análise de padrões ──
@@ -201,6 +217,24 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     } catch { return defaultPerfil }
   }, [analise, decisao, memorias, previsao, intervencoes, data.diario, data.habitos, data.tarefas, data.sessoesFoco, projetos])
 
+  // ── Resumo de feedback ──
+  const feedbackSummary = useMemo((): FeedbackSummary => {
+    try {
+      return generateFeedbackSummary(feedbacks)
+    } catch { return defaultFeedbackSummary }
+  }, [feedbacks])
+
+  // ── Registrar feedback ──
+  function registrarFeedback(fb: Omit<UserFeedback, "id" | "data">) {
+    const novo = salvarFeedback(fb)
+    setFeedbacks(prev => {
+      const semDuplicata = prev.filter(
+        f => !(f.targetId === novo.targetId && f.data === novo.data)
+      )
+      return [...semDuplicata, novo]
+    })
+  }
+
   function setTarefas(tarefas: any[]) { setData(d => ({ ...d, tarefas })) }
   function setMetas(metas: Meta[]) { setData(d => ({ ...d, metas })) }
   function setHabitos(habitos: any[]) { setData(d => ({ ...d, habitos })) }
@@ -211,7 +245,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlannerContext.Provider value={{
-      data, analise, decisao, memorias, previsao, intervencoes, perfil,
+      data, analise, decisao, memorias, previsao,
+      intervencoes, perfil, feedbackSummary, registrarFeedback,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
     }}>
