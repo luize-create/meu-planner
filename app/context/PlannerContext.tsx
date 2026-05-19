@@ -6,6 +6,7 @@ import { generateDecision, DecisionState } from "../lib/decisionEngine"
 import { generateMemories, BehavioralMemory } from "../lib/memoryEngine"
 import { generateForecast, ForecastState } from "../lib/forecastEngine"
 import { generateInterventions, Intervention } from "../lib/interventionEngine"
+import { generatePersonalProfile, PersonalProfile } from "../lib/personalProfileEngine"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -51,6 +52,7 @@ type PlannerContextType = {
   memorias: BehavioralMemory[]
   previsao: ForecastState
   intervencoes: Intervention[]
+  perfil: PersonalProfile
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
   setHabitos: (h: Habito[] | any[]) => void
@@ -95,6 +97,17 @@ const defaultPrevisao: ForecastState = {
   sinaisDetectados: [],
 }
 
+const defaultPerfil: PersonalProfile = {
+  melhorHorarioFoco: "—",
+  habitosReguladores: [],
+  gatilhosPrincipais: [],
+  sinaisDeSobrecarga: [],
+  formasDeRecuperacao: [],
+  padraoDeEnergia: "—",
+  estiloDeProdutividade: "—",
+  resumoHumano: "Continue registrando para o sistema aprender como você funciona.",
+}
+
 const PlannerContext = createContext<PlannerContextType>({} as PlannerContextType)
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
@@ -120,16 +133,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return defaultAnalise
     try {
       return analisarDados(
-        data.habitos,
-        data.sessoesFoco,
-        data.tarefas,
-        data.diario,
-        projetos,
-        30
+        data.habitos, data.sessoesFoco, data.tarefas,
+        data.diario, projetos, 30
       )
-    } catch {
-      return defaultAnalise
-    }
+    } catch { return defaultAnalise }
   }, [data.habitos, data.sessoesFoco, data.tarefas, data.diario, projetos])
 
   // ── Decisão inteligente ──
@@ -137,16 +144,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return defaultDecisao
     try {
       return generateDecision({
-        tarefas: data.tarefas,
-        habitos: data.habitos,
-        diario: data.diario,
-        sessoesFoco: data.sessoesFoco,
-        projetos,
-        analise,
+        tarefas: data.tarefas, habitos: data.habitos,
+        diario: data.diario, sessoesFoco: data.sessoesFoco,
+        projetos, analise,
       })
-    } catch {
-      return defaultDecisao
-    }
+    } catch { return defaultDecisao }
   }, [data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos, analise])
 
   // ── Memória comportamental ──
@@ -154,17 +156,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return []
     try {
       return generateMemories({
-        diario: data.diario,
-        habitos: data.habitos,
-        sessoesFoco: data.sessoesFoco,
-        tarefas: data.tarefas,
-        projetos,
-        analise,
-        decisao,
+        diario: data.diario, habitos: data.habitos,
+        sessoesFoco: data.sessoesFoco, tarefas: data.tarefas,
+        projetos, analise, decisao,
       })
-    } catch {
-      return []
-    }
+    } catch { return [] }
   }, [data.diario, data.habitos, data.sessoesFoco, data.tarefas, projetos, analise, decisao])
 
   // ── Previsão comportamental ──
@@ -172,17 +168,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return defaultPrevisao
     try {
       return generateForecast({
-        diario: data.diario,
-        habitos: data.habitos,
-        tarefas: data.tarefas,
-        sessoesFoco: data.sessoesFoco,
-        analise,
-        decisao,
-        memorias,
+        diario: data.diario, habitos: data.habitos,
+        tarefas: data.tarefas, sessoesFoco: data.sessoesFoco,
+        analise, decisao, memorias,
       })
-    } catch {
-      return defaultPrevisao
-    }
+    } catch { return defaultPrevisao }
   }, [data.diario, data.habitos, data.tarefas, data.sessoesFoco, analise, decisao, memorias])
 
   // ── Intervenções inteligentes ──
@@ -190,20 +180,26 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return []
     try {
       return generateInterventions({
-        analise,
-        decisao,
-        memorias,
-        previsao,
-        tarefas: data.tarefas,
-        habitos: data.habitos,
-        diario: data.diario,
-        sessoesFoco: data.sessoesFoco,
+        analise, decisao, memorias, previsao,
+        tarefas: data.tarefas, habitos: data.habitos,
+        diario: data.diario, sessoesFoco: data.sessoesFoco,
         projetos,
       })
-    } catch {
-      return []
-    }
+    } catch { return [] }
   }, [analise, decisao, memorias, previsao, data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos])
+
+  // ── Perfil pessoal ──
+  const perfil = useMemo((): PersonalProfile => {
+    if (typeof window === "undefined") return defaultPerfil
+    try {
+      return generatePersonalProfile({
+        analise, decisao, memorias, previsao, intervencoes,
+        diario: data.diario, habitos: data.habitos,
+        tarefas: data.tarefas, sessoesFoco: data.sessoesFoco,
+        projetos,
+      })
+    } catch { return defaultPerfil }
+  }, [analise, decisao, memorias, previsao, intervencoes, data.diario, data.habitos, data.tarefas, data.sessoesFoco, projetos])
 
   function setTarefas(tarefas: any[]) { setData(d => ({ ...d, tarefas })) }
   function setMetas(metas: Meta[]) { setData(d => ({ ...d, metas })) }
@@ -215,7 +211,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlannerContext.Provider value={{
-      data, analise, decisao, memorias, previsao, intervencoes,
+      data, analise, decisao, memorias, previsao, intervencoes, perfil,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
     }}>
