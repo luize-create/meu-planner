@@ -5,26 +5,81 @@ import { usePlanner } from "./context/PlannerContext"
 import { useRouter } from "next/navigation"
 
 const estadoConfig = {
-  leve: {
-    cor: "#10b981", icone: "🌱",
-    bordaHero: "#10b98120",
-    badge: "Dia leve",
-  },
-  estavel: {
-    cor: "#7c3aed", icone: "💜",
-    bordaHero: "#7c3aed20",
-    badge: "Estável",
-  },
-  sobrecarregado: {
-    cor: "#f59e0b", icone: "⚡",
-    bordaHero: "#f59e0b20",
-    badge: "Atenção",
-  },
-  critico: {
-    cor: "#fb923c", icone: "🌊",
-    bordaHero: "#fb923c20",
-    badge: "Modo proteção",
-  },
+  leve: { cor: "#10b981", icone: "🌱", bordaHero: "#10b98120", badge: "Dia leve" },
+  estavel: { cor: "#7c3aed", icone: "💜", bordaHero: "#7c3aed20", badge: "Estável" },
+  sobrecarregado: { cor: "#f59e0b", icone: "⚡", bordaHero: "#f59e0b20", badge: "Atenção" },
+  critico: { cor: "#fb923c", icone: "🌊", bordaHero: "#fb923c20", badge: "Modo proteção" },
+}
+
+function Explicacao({ decisao, corEstado }: { decisao: any; corEstado: string }) {
+  const [aberto, setAberto] = useState(false)
+  const [feedback, setFeedback] = useState<"sim" | "nao" | null>(null)
+
+  const dadosConsiderados = [
+    decisao.sobrecargaScore < 40
+      ? "sua sobrecarga está baixa"
+      : decisao.sobrecargaScore < 70
+      ? "sua sobrecarga está moderada"
+      : "sua sobrecarga está alta",
+    decisao.energiaScore >= 60
+      ? "sua energia está boa"
+      : decisao.energiaScore >= 40
+      ? "sua energia está média"
+      : "sua energia está baixa",
+    decisao.clarezaScore >= 60
+      ? "sua clareza está acima da média"
+      : "sua clareza pode melhorar com foco",
+    decisao.estabilidadeScore >= 60
+      ? "seu sistema parece estável hoje"
+      : "há sinais de instabilidade nos registros",
+    ...decisao.motivos.slice(0, 2),
+  ].slice(0, 4)
+
+  const confianca = decisao.motivos.length >= 2
+    ? "alta"
+    : decisao.motivos.length === 1
+    ? "moderada"
+    : "baseada em padrões gerais"
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <button
+        onClick={() => setAberto(!aberto)}
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 11, color: "#3a3a5a" }}>{aberto ? "▾" : "▸"}</span>
+        <span style={{ fontSize: 11, color: "#3a3a5a", fontStyle: "italic" }}>Por que o sistema sugeriu isso?</span>
+      </button>
+      {aberto && (
+        <div style={{ background: "#0a0a14", border: "1px solid #0f0f22", borderRadius: 12, padding: "14px 16px", marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 10 }}>O sistema considerou:</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+            {dadosConsiderados.map((d, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: corEstado, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: "#6b6b8a" }}>{d}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: "#3a3a5a", marginBottom: 12 }}>
+            Confiança da sugestão: <span style={{ color: corEstado }}>{confianca}</span>
+          </div>
+          {feedback === null ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#3a3a5a" }}>Fez sentido?</span>
+              <button onClick={() => setFeedback("sim")} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "3px 12px", color: "#059669", fontSize: 11, cursor: "pointer" }}>Sim</button>
+              <button onClick={() => setFeedback("nao")} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "3px 12px", color: "#f59e0b", fontSize: 11, cursor: "pointer" }}>Não muito</button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: "#4a4a6a", fontStyle: "italic" }}>
+              {feedback === "sim"
+                ? "✓ Obrigado. O sistema vai continuar aprendendo com você."
+                : "✓ Anotado. Isso ajuda a melhorar as sugestões."}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Central() {
@@ -43,8 +98,8 @@ export default function Central() {
   const [novaT,        setNovaT]        = useState("")
   const [mostrarNovaT, setMostrarNovaT] = useState(false)
 
-  const hoje    = new Date().toISOString().slice(0, 10)
-  const hora    = new Date().getHours()
+  const hoje     = new Date().toISOString().slice(0, 10)
+  const hora     = new Date().getHours()
   const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"
 
   useEffect(() => {
@@ -58,27 +113,22 @@ export default function Central() {
     if (i) setIntencao(i)
   }, [hoje])
 
-  // ── Estado atual ──
-  const config        = estadoConfig[decisao.estadoAtual]
-  const modoProtecao  = decisao.modoProtecao
-  const corEstado     = config.cor
-  const badgeEstado   = config.badge
+  const config       = estadoConfig[decisao.estadoAtual]
+  const modoProtecao = decisao.modoProtecao
+  const corEstado    = config.cor
 
-  // ── Métricas ──
-  const tarefasHoje   = tarefas.filter((t: any) => t.data === hoje)
-  const tarefasPend   = tarefasHoje.filter((t: any) => !t.feita)
-  const proximaTarefa = tarefasPend[0]
+  const tarefasHoje    = tarefas.filter((t: any) => t.data === hoje)
+  const tarefasPend    = tarefasHoje.filter((t: any) => !t.feita)
+  const proximaTarefa  = tarefasPend[0]
   const projetosAtivos = projetos.filter((p: any) => p.status === "Em andamento").slice(0, 3)
   const metasAtivas    = metas.filter((m: any) => (m.progresso || 0) < 100).slice(0, 3)
 
-  // Energia / Clareza / Motivação
   const ultimaDiario = diario.filter((e: any) => e.data === hoje)[0]
     || [...diario].sort((a: any, b: any) => b.data.localeCompare(a.data))[0]
   const energia   = ultimaDiario?.checkin?.energia   || 6
   const clareza   = ultimaDiario?.checkin?.clareza   || 7
   const motivacao = ultimaDiario?.checkin?.humor     || 6
 
-  // ── Insights ──
   const ajudando = useMemo(() => {
     const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
     analise.correlacoes.filter(c => c.tipo === "positiva").slice(0, 3).forEach(c => {
@@ -90,15 +140,15 @@ export default function Central() {
       })
     })
     if (!lista.length) {
-      lista.push({ icone: "🌙", label: "Sono",    descricao: "Noites bem dormidas parecem melhorar sua clareza mental.", valor: "+28%" })
-      lista.push({ icone: "🏃", label: "Exercício",descricao: "Dias de treino tendem a ter mais energia registrada.",     valor: "+23%" })
+      lista.push({ icone: "🌙", label: "Sono",     descricao: "Noites bem dormidas parecem melhorar sua clareza mental.", valor: "+28%" })
+      lista.push({ icone: "🏃", label: "Exercício", descricao: "Dias de treino tendem a ter mais energia registrada.",     valor: "+23%" })
     }
     return lista.slice(0, 3)
   }, [analise.correlacoes])
 
   const prejudicando = useMemo(() => {
     const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
-    analise.correlacoes.filter(c => c.tipo === "negativa").slice(0, 2).forEach(c => {
+    analise.correlacoes.filter(c => c.tipo === "negativa").slice(0, 3).forEach(c => {
       lista.push({
         icone: c.origem === "tela" ? "📱" : "🌀",
         label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1),
@@ -149,7 +199,7 @@ export default function Central() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ fontSize: 13, color: "#6b6b8a" }}>{saudacao} ☀️</div>
             <div style={{ background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 20, padding: "4px 12px", fontSize: 12, color: corEstado, display: "flex", alignItems: "center", gap: 5 }}>
-              <span>{config.icone}</span> {badgeEstado}
+              <span>{config.icone}</span> {config.badge}
             </div>
             <div style={{ background: "#7c3aed20", border: "1px solid #7c3aed30", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#a855f7" }}>
               ⚡ {data.xp} XP
@@ -157,7 +207,7 @@ export default function Central() {
           </div>
         </div>
 
-        {/* MODO PROTEÇÃO — banner */}
+        {/* Modo proteção banner */}
         {modoProtecao && (
           <div style={{ background: `${corEstado}12`, border: `1px solid ${corEstado}35`, borderRadius: 12, padding: "12px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 18 }}>{config.icone}</span>
@@ -172,14 +222,11 @@ export default function Central() {
         )}
 
         {/* Hero */}
-        <div style={{ background: "linear-gradient(135deg, #0d0d1e, #12101e)", border: `1px solid ${config.bordaHero}`, borderRadius: 18, padding: "22px 26px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
+        <div style={{ background: "linear-gradient(135deg, #0d0d1e, #12101e)", border: `1px solid ${config.bordaHero}`, borderRadius: 18, padding: "22px 26px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 65% 50%, ${corEstado}0a, transparent 60%)`, pointerEvents: "none" }} />
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 28, alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                <span>✦</span> Foco da sua vida hoje
-              </div>
+              <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>✦ Foco da sua vida hoje</div>
               {editIntencao ? (
                 <input autoFocus defaultValue={intencao}
                   onBlur={e => salvarIntencao(e.target.value)}
@@ -190,7 +237,6 @@ export default function Central() {
                   {intencao}
                 </h2>
               )}
-              {/* Mensagem principal do decisionEngine */}
               <p style={{ fontSize: 13, color: "#6b6b8a", margin: "0 0 16px", fontStyle: "italic", lineHeight: 1.6 }}>
                 {decisao.mensagemPrincipal}
               </p>
@@ -203,8 +249,6 @@ export default function Central() {
                 </button>
               </div>
             </div>
-
-            {/* Barras de estado */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 190 }}>
               {[
                 { label: "Energia",        valor: energia,   cor: "#f59e0b", icone: "⚡" },
@@ -227,8 +271,8 @@ export default function Central() {
           </div>
         </div>
 
-        {/* O QUE FAZER AGORA — card de ação imediata */}
-        <div style={{ background: `linear-gradient(135deg, ${corEstado}10, ${corEstado}06)`, border: `1px solid ${corEstado}30`, borderRadius: 14, padding: "14px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
+        {/* O que fazer agora */}
+        <div style={{ background: `linear-gradient(135deg, ${corEstado}10, ${corEstado}06)`, border: `1px solid ${corEstado}30`, borderRadius: 14, padding: "14px 20px", marginBottom: 8, display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 38, height: 38, borderRadius: "50%", background: `${corEstado}20`, border: `1.5px solid ${corEstado}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
             {config.icone}
           </div>
@@ -243,19 +287,19 @@ export default function Central() {
           )}
         </div>
 
-        {/* Grid principal — esconde itens secundários no modo proteção */}
+        {/* Explicação da sugestão */}
+        <Explicacao decisao={decisao} corEstado={corEstado} />
+
+        {/* Grid principal */}
         <div style={{ display: "grid", gridTemplateColumns: modoProtecao ? "1fr 1fr" : "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
 
-          {/* Próxima ação — prioridade do decisao */}
+          {/* Próxima ação */}
           <div style={{ background: "#0f0f1c", border: `1px solid ${modoProtecao ? corEstado + "40" : "#1a1a2e"}`, borderRadius: 14, padding: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 14 }}>✦</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>
-                {modoProtecao ? "Uma prioridade só" : "Próxima ação importante"}
-              </span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{modoProtecao ? "Uma prioridade só" : "Próxima ação importante"}</span>
             </div>
             {modoProtecao ? (
-              // Modo proteção: mostra só prioridade do dia
               <div>
                 <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 12px", fontStyle: "italic" }}>
                   {decisao.prioridadeDoDia}
@@ -351,7 +395,7 @@ export default function Central() {
           )}
         </div>
 
-        {/* Metas + Tarefas — simplificado no modo proteção */}
+        {/* Metas + Tarefas */}
         {!modoProtecao && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
@@ -420,9 +464,7 @@ export default function Central() {
         {/* Modo proteção: tarefas simplificadas */}
         {modoProtecao && (
           <div style={{ background: "#0f0f1c", border: `1px solid ${corEstado}25`, borderRadius: 14, padding: 18, marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10, color: "#94a3b8" }}>
-              Tarefas essenciais de hoje
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10, color: "#94a3b8" }}>Tarefas essenciais de hoje</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {tarefasHoje.filter((t: any) => t.prioridade === "Alta" && !t.feita).slice(0, 3).map((t: any) => (
                 <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -465,18 +507,14 @@ export default function Central() {
             <div style={{ position: "relative", width: 82, height: 82, flexShrink: 0 }}>
               <svg width="82" height="82" viewBox="0 0 82 82">
                 <circle cx="41" cy="41" r="38" fill="none" stroke="#1a1a2e" strokeWidth="6" />
-                <circle cx="41" cy="41" r="38" fill="none" stroke={
-                  decisao.estadoAtual === "critico" ? "#dc2626" :
-                  decisao.estadoAtual === "sobrecarregado" ? "#f59e0b" :
-                  decisao.estadoAtual === "leve" ? "#10b981" : "#7c3aed"
-                } strokeWidth="6"
+                <circle cx="41" cy="41" r="38" fill="none" stroke={corEstado} strokeWidth="6"
                   strokeDasharray={`${circ * decisao.sobrecargaScore / 100} ${circ}`}
                   strokeLinecap="round" transform="rotate(-90 41 41)"
                   style={{ filter: `drop-shadow(0 0 5px ${corEstado}60)`, transition: "stroke-dasharray .5s" }} />
               </svg>
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: corEstado }}>{decisao.sobrecargaScore}%</div>
-                <div style={{ fontSize: 9, color: corEstado }}>{badgeEstado}</div>
+                <div style={{ fontSize: 9, color: corEstado }}>{config.badge}</div>
               </div>
             </div>
             <div style={{ flex: 1 }}>
