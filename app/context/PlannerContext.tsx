@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react"
 import { analisarDados, ResultadoAnalise } from "../lib/patternEngine"
 import { generateDecision, DecisionState } from "../lib/decisionEngine"
+import { generateMemories, BehavioralMemory } from "../lib/memoryEngine"
 
 export type Tarefa = {
   id: number; texto: string; descricao: string; categoria: string
@@ -45,6 +46,7 @@ type PlannerContextType = {
   data: PlannerData
   analise: ResultadoAnalise
   decisao: DecisionState
+  memorias: BehavioralMemory[]
   setTarefas: (t: Tarefa[] | any[]) => void
   setMetas: (m: Meta[]) => void
   setHabitos: (h: Habito[] | any[]) => void
@@ -132,6 +134,24 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }
   }, [data.tarefas, data.habitos, data.diario, data.sessoesFoco, projetos, analise])
 
+  // ── Memória comportamental ──
+  const memorias = useMemo((): BehavioralMemory[] => {
+    if (typeof window === "undefined") return []
+    try {
+      return generateMemories({
+        diario: data.diario,
+        habitos: data.habitos,
+        sessoesFoco: data.sessoesFoco,
+        tarefas: data.tarefas,
+        projetos,
+        analise,
+        decisao,
+      })
+    } catch {
+      return []
+    }
+  }, [data.diario, data.habitos, data.sessoesFoco, data.tarefas, projetos, analise, decisao])
+
   function setTarefas(tarefas: any[]) { setData(d => ({ ...d, tarefas })) }
   function setMetas(metas: Meta[]) { setData(d => ({ ...d, metas })) }
   function setHabitos(habitos: any[]) { setData(d => ({ ...d, habitos })) }
@@ -142,7 +162,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlannerContext.Provider value={{
-      data, analise, decisao,
+      data, analise, decisao, memorias,
       setTarefas, setMetas, setHabitos, setBlocos,
       setSessoesFoco, setDiario, adicionarXP
     }}>
