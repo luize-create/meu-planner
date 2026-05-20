@@ -6,24 +6,24 @@ import { useRouter } from "next/navigation"
 import { getFeedbackState } from "./lib/feedbackEngine"
 
 const estadoConfig = {
-  leve:     { cor: "#10b981", icone: "🌱", badge: "Dia leve",       bordaHero: "#10b98120" },
-  estavel:  { cor: "#7c3aed", icone: "💜", badge: "Estável",         bordaHero: "#7c3aed20" },
-  atencao:  { cor: "#f59e0b", icone: "⚡", badge: "Atenção",         bordaHero: "#f59e0b20" },
-  protecao: { cor: "#fb923c", icone: "🌊", badge: "Modo proteção",   bordaHero: "#fb923c20" },
+  leve:     { cor: "#10b981", icone: "🌱", badge: "Dia leve",     bordaHero: "#10b98120" },
+  estavel:  { cor: "#7c3aed", icone: "💜", badge: "Estável",       bordaHero: "#7c3aed20" },
+  atencao:  { cor: "#f59e0b", icone: "⚡", badge: "Atenção",       bordaHero: "#f59e0b20" },
+  protecao: { cor: "#fb923c", icone: "🌊", badge: "Vai com calma", bordaHero: "#fb923c20" },
 }
 
 function BotaoFeedback({ targetId, targetType, onFeedback }: { targetId: string; targetType: any; onFeedback: (r: "fez_sentido" | "nao_fez_sentido") => void }) {
   const [resp, setResp] = useState<"sim" | "nao" | null>(() => getFeedbackState(targetId))
   if (resp !== null) return (
     <span style={{ fontSize: 10, color: "#3a3a5a", fontStyle: "italic" }}>
-      {resp === "sim" ? "✓ Obrigada pelo feedback" : "✓ Anotado"}
+      {resp === "sim" ? "✓ anotado" : "✓ entendido"}
     </span>
   )
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 10, color: "#3a3a5a" }}>Fez sentido?</span>
-      <button onClick={() => { setResp("sim"); onFeedback("fez_sentido") }} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "2px 10px", color: "#059669", fontSize: 10, cursor: "pointer" }}>Sim</button>
-      <button onClick={() => { setResp("nao"); onFeedback("nao_fez_sentido") }} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "2px 10px", color: "#f59e0b", fontSize: 10, cursor: "pointer" }}>Não muito</button>
+      <span style={{ fontSize: 10, color: "#3a3a5a" }}>fez sentido?</span>
+      <button onClick={() => { setResp("sim"); onFeedback("fez_sentido") }} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "2px 10px", color: "#059669", fontSize: 10, cursor: "pointer" }}>sim</button>
+      <button onClick={() => { setResp("nao"); onFeedback("nao_fez_sentido") }} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "2px 10px", color: "#f59e0b", fontSize: 10, cursor: "pointer" }}>não muito</button>
     </div>
   )
 }
@@ -33,23 +33,21 @@ function Explicacao({ decisao, inteligencia, corEstado }: { decisao: any; inteli
   const [feedback, setFeedback] = useState<"sim" | "nao" | null>(null)
 
   const dados = [
-    decisao.sobrecargaScore < 40 ? "sua sobrecarga está baixa" : decisao.sobrecargaScore < 70 ? "sua sobrecarga está moderada" : "sua sobrecarga está alta",
-    decisao.energiaScore >= 60 ? "sua energia está boa" : decisao.energiaScore >= 40 ? "sua energia está média" : "sua energia está baixa",
-    decisao.clarezaScore >= 60 ? "sua clareza está acima da média" : "sua clareza pode melhorar com foco",
+    decisao.sobrecargaScore < 40 ? "sua agenda parece mais tranquila hoje" : decisao.sobrecargaScore < 70 ? "você tem bastante coisa em aberto" : "muita coisa acumulada nos últimos dias",
+    decisao.energiaScore >= 60 ? "sua energia parece boa" : decisao.energiaScore >= 40 ? "energia em nível médio" : "energia mais baixa nos registros recentes",
+    decisao.clarezaScore >= 60 ? "clareza acima da média" : "clareza pode melhorar com um pouco de foco",
     ...decisao.motivos.slice(0, 1),
   ].slice(0, 4)
-
-  const confianca = inteligencia.motivos.length >= 2 ? "alta" : "moderada"
 
   return (
     <div style={{ marginBottom: 14 }}>
       <button onClick={() => setAberto(!aberto)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 11, color: "#3a3a5a" }}>{aberto ? "▾" : "▸"}</span>
-        <span style={{ fontSize: 11, color: "#3a3a5a", fontStyle: "italic" }}>Por que o sistema sugeriu isso?</span>
+        <span style={{ fontSize: 11, color: "#3a3a5a", fontStyle: "italic" }}>como cheguei a isso?</span>
       </button>
       {aberto && (
         <div style={{ background: "#0a0a14", border: "1px solid #0f0f22", borderRadius: 12, padding: "14px 16px", marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 10 }}>O sistema considerou:</div>
+          <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 10 }}>olhando seus registros de hoje:</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
             {dados.map((d, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -63,18 +61,15 @@ function Explicacao({ decisao, inteligencia, corEstado }: { decisao: any; inteli
               <span style={{ color: corEstado }}>·</span><span>{m}</span>
             </div>
           ))}
-          <div style={{ fontSize: 10, color: "#3a3a5a", margin: "8px 0" }}>
-            Confiança: <span style={{ color: corEstado }}>{confianca}</span>
-          </div>
           {feedback === null ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#3a3a5a" }}>Fez sentido?</span>
-              <button onClick={() => setFeedback("sim")} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "3px 12px", color: "#059669", fontSize: 11, cursor: "pointer" }}>Sim</button>
-              <button onClick={() => setFeedback("nao")} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "3px 12px", color: "#f59e0b", fontSize: 11, cursor: "pointer" }}>Não muito</button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+              <span style={{ fontSize: 11, color: "#3a3a5a" }}>fez sentido?</span>
+              <button onClick={() => setFeedback("sim")} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "3px 12px", color: "#059669", fontSize: 11, cursor: "pointer" }}>sim</button>
+              <button onClick={() => setFeedback("nao")} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "3px 12px", color: "#f59e0b", fontSize: 11, cursor: "pointer" }}>não muito</button>
             </div>
           ) : (
-            <div style={{ fontSize: 11, color: "#4a4a6a", fontStyle: "italic" }}>
-              {feedback === "sim" ? "✓ O sistema vai continuar aprendendo com você." : "✓ Anotado. Isso ajuda a calibrar as sugestões."}
+            <div style={{ fontSize: 11, color: "#4a4a6a", fontStyle: "italic", marginTop: 8 }}>
+              {feedback === "sim" ? "✓ obrigada. isso ajuda a afinar as sugestões." : "✓ faz sentido saber disso. obrigada."}
             </div>
           )}
         </div>
@@ -112,17 +107,13 @@ export default function Central() {
     if (i) setIntencao(i)
   }, [hoje])
 
-  // ── Do orchestrator ──
-  const config          = estadoConfig[inteligencia.estadoGeral]
-  const corEstado       = config.cor
-  const modoProtecao    = inteligencia.mostrarModoProtecao
-  const blocoOculto     = (bloco: string) => inteligencia.blocosOcultos.includes(bloco)
-  const blocoPrioritario = (bloco: string) => inteligencia.blocosPrioritarios.includes(bloco)
+  const config       = estadoConfig[inteligencia.estadoGeral]
+  const corEstado    = config.cor
+  const modoProtecao = inteligencia.mostrarModoProtecao
+  const blocoOculto  = (bloco: string) => inteligencia.blocosOcultos.includes(bloco)
 
-  // ── Intervenção principal ──
   const intervencaoPrinc = intervencoes[0]
 
-  // ── Métricas ──
   const tarefasHoje    = tarefas.filter((t: any) => t.data === hoje)
   const tarefasPend    = tarefasHoje.filter((t: any) => !t.feita)
   const proximaTarefa  = tarefasPend[0]
@@ -203,7 +194,7 @@ export default function Central() {
           </div>
         </div>
 
-        {/* Alerta suave do orchestrator */}
+        {/* Alerta suave */}
         {inteligencia.alertaSuave && (
           <div style={{ background: `${corEstado}10`, border: `1px solid ${corEstado}30`, borderRadius: 10, padding: "8px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 13 }}>{config.icone}</span>
@@ -211,16 +202,16 @@ export default function Central() {
           </div>
         )}
 
-        {/* Modo proteção banner */}
+        {/* Banner modo proteção */}
         {modoProtecao && (
           <div style={{ background: `${corEstado}12`, border: `1px solid ${corEstado}35`, borderRadius: 12, padding: "12px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 18 }}>{config.icone}</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: corEstado, marginBottom: 2 }}>Modo proteção ativo</div>
-              <div style={{ fontSize: 12, color: "#6b6b8a" }}>Hoje sua missão é atravessar o dia com menos ruído. Uma coisa de cada vez.</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: corEstado, marginBottom: 2 }}>vai com calma hoje</div>
+              <div style={{ fontSize: 12, color: "#6b6b8a" }}>Sua missão agora é atravessar o dia com menos ruído. Uma coisa de cada vez.</div>
             </div>
             <button onClick={() => router.push("/foco")} style={{ background: `${corEstado}20`, border: `1px solid ${corEstado}40`, borderRadius: 8, padding: "6px 14px", color: corEstado, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
-              Entrar em foco →
+              entrar em foco →
             </button>
           </div>
         )}
@@ -230,7 +221,7 @@ export default function Central() {
           <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 65% 50%, ${corEstado}0a, transparent 60%)`, pointerEvents: "none" }} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 28, alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>✦ Foco da sua vida hoje</div>
+              <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>✦ foco da sua vida hoje</div>
               {editIntencao ? (
                 <input autoFocus defaultValue={intencao}
                   onBlur={e => salvarIntencao(e.target.value)}
@@ -241,24 +232,23 @@ export default function Central() {
                   {intencao}
                 </h2>
               )}
-              {/* Mensagem do orchestrator */}
               <p style={{ fontSize: 13, color: "#6b6b8a", margin: "0 0 16px", fontStyle: "italic", lineHeight: 1.6 }}>
                 {inteligencia.mensagemCentral}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setEditIntencao(true)} style={{ background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 20, padding: "7px 16px", color: corEstado, fontSize: 12, cursor: "pointer" }}>
-                  ✦ Definir intenção
+                  ✦ definir intenção
                 </button>
                 <button onClick={() => router.push("/foco")} style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 20, padding: "7px 16px", color: "#6b6b8a", fontSize: 12, cursor: "pointer" }}>
-                  ⏱ Iniciar foco
+                  ⏱ iniciar foco
                 </button>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 190 }}>
               {[
-                { label: "Energia",        valor: energia,   cor: "#f59e0b", icone: "⚡" },
-                { label: "Clareza mental", valor: clareza,   cor: "#7c3aed", icone: "🧠" },
-                { label: "Motivação",      valor: motivacao, cor: "#10b981", icone: "✨" },
+                { label: "energia",        valor: energia,   cor: "#f59e0b", icone: "⚡" },
+                { label: "clareza mental", valor: clareza,   cor: "#7c3aed", icone: "🧠" },
+                { label: "motivação",      valor: motivacao, cor: "#10b981", icone: "✨" },
               ].map((m, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 13 }}>{m.icone}</span>
@@ -276,13 +266,13 @@ export default function Central() {
           </div>
         </div>
 
-        {/* O que fazer agora — do orchestrator */}
+        {/* Por onde começar */}
         <div style={{ background: `linear-gradient(135deg, ${corEstado}10, ${corEstado}06)`, border: `1px solid ${corEstado}30`, borderRadius: 14, padding: "14px 20px", marginBottom: 8, display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 38, height: 38, borderRadius: "50%", background: `${corEstado}20`, border: `1.5px solid ${corEstado}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
             {config.icone}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>O que fazer agora</div>
+            <div style={{ fontSize: 11, color: corEstado, fontWeight: 500, marginBottom: 3, letterSpacing: "0.04em" }}>por onde começar</div>
             <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 6 }}>
               {inteligencia.acaoDestacada || decisao.sugestaoImediata}
             </div>
@@ -291,15 +281,15 @@ export default function Central() {
           </div>
           {!modoProtecao && (
             <button onClick={() => router.push("/foco")} style={{ background: `${corEstado}20`, border: `1px solid ${corEstado}40`, borderRadius: 8, padding: "7px 14px", color: corEstado, fontSize: 11, cursor: "pointer", flexShrink: 0 }}>
-              Começar →
+              começar →
             </button>
           )}
         </div>
 
         <Explicacao decisao={decisao} inteligencia={inteligencia} corEstado={corEstado} />
 
-        {/* Intervenção principal — do interventionEngine */}
-        {intervencaoPrinc && !blocoOculto("sugestoes_automaticas") && (
+        {/* Intervenção principal */}
+        {intervencaoPrinc && !inteligencia.blocosOcultos.includes("sugestoes_automaticas") && (
           <div style={{ background: "#0a0a18", border: `1px solid ${corEstado}25`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, display: "flex", gap: 12, alignItems: "flex-start" }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: `${corEstado}18`, border: `1px solid ${corEstado}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
               {intervencaoPrinc.tipo === "foco" ? "🎯" : intervencaoPrinc.tipo === "protecao" ? "🛡️" : intervencaoPrinc.tipo === "descanso" ? "☁️" : intervencaoPrinc.tipo === "reducao" ? "📋" : intervencaoPrinc.tipo === "expansao" ? "🚀" : "📅"}
@@ -317,11 +307,11 @@ export default function Central() {
         {/* Grid principal */}
         <div style={{ display: "grid", gridTemplateColumns: modoProtecao ? "1fr 1fr" : "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
 
-          {/* Próxima ação — prioridade do orchestrator */}
+          {/* Próxima ação */}
           <div style={{ background: "#0f0f1c", border: `1px solid ${modoProtecao ? corEstado + "40" : "#1a1a2e"}`, borderRadius: 14, padding: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span>✦</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{modoProtecao ? "Uma prioridade só" : "Próxima ação importante"}</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{modoProtecao ? "uma coisa só" : "próxima ação"}</span>
             </div>
             {modoProtecao ? (
               <div>
@@ -350,7 +340,7 @@ export default function Central() {
                   </>
                 ) : (
                   <div style={{ fontSize: 13, color: "#4a4a6a", marginBottom: 8 }}>
-                    {tarefasHoje.length > 0 ? "✓ Todas concluídas hoje!" : "Nenhuma tarefa para hoje."}
+                    {tarefasHoje.length > 0 ? "✓ tudo feito hoje!" : "nenhuma tarefa para hoje."}
                   </div>
                 )}
                 <p style={{ fontSize: 11, color: "#3a3a5a", margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>
@@ -359,7 +349,7 @@ export default function Central() {
               </>
             )}
             <button onClick={() => router.push("/tarefas")} style={{ marginTop: 12, background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>
-              Ver todas as tarefas →
+              ver todas →
             </button>
           </div>
 
@@ -368,12 +358,12 @@ export default function Central() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span>📅</span>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>Agenda de hoje</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>agenda de hoje</span>
               </div>
-              <button onClick={() => router.push("/agenda")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
+              <button onClick={() => router.push("/agenda")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
             </div>
             {blocos.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhum compromisso hoje.</div>
+              <div style={{ fontSize: 12, color: "#4a4a6a" }}>nenhum compromisso hoje.</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {blocos.slice(0, 4).map((b: any, i: number) => (
@@ -387,18 +377,18 @@ export default function Central() {
             )}
           </div>
 
-          {/* Projetos — oculto no modo proteção */}
+          {/* Projetos */}
           {!modoProtecao && !blocoOculto("projetos") && (
             <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span>🚀</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>Projetos ativos</span>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>projetos ativos</span>
                 </div>
-                <button onClick={() => router.push("/projetos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
+                <button onClick={() => router.push("/projetos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
               </div>
               {projetosAtivos.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhum projeto ativo.</div>
+                <div style={{ fontSize: 12, color: "#4a4a6a" }}>nenhum projeto ativo.</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {projetosAtivos.map((p: any) => (
@@ -419,19 +409,19 @@ export default function Central() {
           )}
         </div>
 
-        {/* Metas + Tarefas — ocultos no modo proteção */}
+        {/* Metas + Tarefas */}
         {!modoProtecao && !blocoOculto("metas") && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span>🎯</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>Metas em progresso</span>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>metas em andamento</span>
                 </div>
-                <button onClick={() => router.push("/metas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
+                <button onClick={() => router.push("/metas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
               </div>
               {metasAtivas.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhuma meta ativa.</div>
+                <div style={{ fontSize: 12, color: "#4a4a6a" }}>nenhuma meta ativa.</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {metasAtivas.map((m: any) => (
@@ -453,9 +443,9 @@ export default function Central() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span>✅</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>Tarefas de hoje</span>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>tarefas de hoje</span>
                 </div>
-                <button onClick={() => router.push("/tarefas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
+                <button onClick={() => router.push("/tarefas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {tarefasHoje.slice(0, 5).map((t: any) => (
@@ -472,23 +462,23 @@ export default function Central() {
                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                   <input autoFocus value={novaT} onChange={e => setNovaT(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && adicionarTarefa()}
-                    placeholder="Nova tarefa..."
+                    placeholder="nova tarefa..."
                     style={{ flex: 1, background: "#12121f", border: "1px solid #1e1e35", borderRadius: 7, padding: "6px 10px", color: "#e2e8f0", fontSize: 12, outline: "none" }} />
                   <button onClick={adicionarTarefa} style={{ background: "#7c3aed", border: "none", borderRadius: 7, padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: 12 }}>+</button>
                 </div>
               ) : (
                 <button onClick={() => setMostrarNovaT(true)} style={{ marginTop: 10, background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>
-                  + Nova tarefa
+                  + nova tarefa
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* Modo proteção: só tarefas essenciais */}
+        {/* Modo proteção: só essencial */}
         {modoProtecao && (
           <div style={{ background: "#0f0f1c", border: `1px solid ${corEstado}25`, borderRadius: 14, padding: 18, marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10, color: "#94a3b8" }}>Tarefas essenciais de hoje</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 10 }}>o essencial de hoje</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {tarefasHoje.filter((t: any) => t.prioridade === "Alta" && !t.feita).slice(0, 3).map((t: any) => (
                 <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -497,19 +487,19 @@ export default function Central() {
                 </div>
               ))}
               {tarefasHoje.filter((t: any) => t.prioridade === "Alta" && !t.feita).length === 0 && (
-                <div style={{ fontSize: 12, color: "#4a4a6a", fontStyle: "italic" }}>Nenhuma tarefa de alta prioridade hoje.</div>
+                <div style={{ fontSize: 12, color: "#4a4a6a", fontStyle: "italic" }}>nada urgente. descanse um pouco.</div>
               )}
             </div>
           </div>
         )}
 
-        {/* Lembrete do sistema — usa insight do orchestrator */}
+        {/* Observação final */}
         <div style={{ background: "linear-gradient(135deg, #0f0f1c, #12111e)", border: `1px solid ${corEstado}20`, borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg, ${corEstado}, ${corEstado}aa)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, boxShadow: `0 0 14px ${corEstado}35` }}>
             {config.icone}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, marginBottom: 3 }}>Lembrete do sistema ✦</div>
+            <div style={{ fontSize: 11, color: corEstado, fontWeight: 500, marginBottom: 3 }}>uma observação ✦</div>
             <p style={{ fontSize: 12, color: "#6b6b8a", margin: "0 0 6px", lineHeight: 1.6, fontStyle: "italic" }}>
               {inteligencia.insightPrincipal}
             </p>
@@ -517,7 +507,7 @@ export default function Central() {
               onFeedback={r => registrarFeedback({ targetId: "insight-principal", targetType: "insight", resposta: r })} />
           </div>
           <button onClick={() => router.push("/evolucao")} style={{ background: `${corEstado}15`, border: `1px solid ${corEstado}30`, borderRadius: 8, padding: "7px 14px", color: corEstado, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-            Ver evolução →
+            ver evolução →
           </button>
         </div>
       </div>
@@ -525,11 +515,11 @@ export default function Central() {
       {/* COLUNA DIREITA */}
       <div style={{ background: "#08080f", borderLeft: "1px solid #0f0f22", padding: "22px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
 
-        {/* Sobrecarga */}
+        {/* Como você está */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
             <span>✦</span>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Como está sua sobrecarga?</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>como você está hoje?</span>
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
             <div style={{ position: "relative", width: 82, height: 82, flexShrink: 0 }}>
@@ -556,42 +546,40 @@ export default function Central() {
               ))}
               {modoProtecao && (
                 <button onClick={() => router.push("/tarefas")} style={{ marginTop: 8, background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 8, padding: "5px 12px", color: corEstado, fontSize: 11, cursor: "pointer" }}>
-                  Reduzir sobrecarga
+                  simplificar →
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Previsão — do forecastEngine */}
+        {/* Tendência */}
         {(previsao.riscoSobrecarga > 30 || previsao.tendenciaClareza !== "estavel") && (
           <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>📡 Tendência detectada</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>o que os registros sugerem</div>
             <p style={{ fontSize: 12, color: "#6b6b8a", lineHeight: 1.6, margin: "0 0 10px", fontStyle: "italic" }}>
               {previsao.mensagemPrevisiva}
             </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               {[
-                { label: "Clareza", tend: previsao.tendenciaClareza },
-                { label: "Energia", tend: previsao.tendenciaEnergia },
+                { label: "clareza", tend: previsao.tendenciaClareza },
+                { label: "energia", tend: previsao.tendenciaEnergia },
               ].map((t, i) => (
                 <div key={i} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: t.tend === "subindo" ? "#05906918" : t.tend === "caindo" ? "#dc262618" : "#1a1a2e", color: t.tend === "subindo" ? "#059669" : t.tend === "caindo" ? "#f87171" : "#6b6b8a", border: `1px solid ${t.tend === "subindo" ? "#05906930" : t.tend === "caindo" ? "#dc262630" : "#1e1e35"}` }}>
                   {t.label} {t.tend === "subindo" ? "↑" : t.tend === "caindo" ? "↓" : "→"}
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 10 }}>
-              <BotaoFeedback targetId="previsao-tendencia" targetType="forecast"
-                onFeedback={r => registrarFeedback({ targetId: "previsao-tendencia", targetType: "forecast", resposta: r })} />
-            </div>
+            <BotaoFeedback targetId="previsao-tendencia" targetType="forecast"
+              onFeedback={r => registrarFeedback({ targetId: "previsao-tendencia", targetType: "forecast", resposta: r })} />
           </div>
         )}
 
-        {/* O que está ajudando */}
+        {/* O que parece ajudar */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>✦ O que está te ajudando</span>
-            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>o que parece ajudar</span>
+            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {ajudando.map((a, i) => (
@@ -607,11 +595,11 @@ export default function Central() {
           </div>
         </div>
 
-        {/* O que pode estar prejudicando */}
+        {/* O que pode estar pesando */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>⚠️ O que pode estar prejudicando</span>
-            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver →</button>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>o que pode estar pesando</span>
+            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {prejudicando.map((p, i) => (
@@ -627,12 +615,12 @@ export default function Central() {
           </div>
         </div>
 
-        {/* Hábitos rápidos */}
+        {/* Hábitos hoje */}
         {habitos.length > 0 && (
           <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>🔥 Hábitos hoje</span>
-              <button onClick={() => router.push("/habitos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>Ver todos →</button>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>🔥 hábitos hoje</span>
+              <button onClick={() => router.push("/habitos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver todos →</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {habitos.slice(0, 4).map((h: any) => {
