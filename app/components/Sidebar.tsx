@@ -1,12 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { usePlanner } from "../context/PlannerContext"
 
 const navOrganizacao = [
   { icon: "🏠", label: "Central", href: "/" },
-  { icon: "⏱️", label: "Foco",    href: "/foco" },
 ]
 
 const navAutoconhecimento = [
@@ -21,7 +20,7 @@ const diasSemana = ["S","T","Q","Q","S","S","D"]
 function xpParaProximoNivel(xp: number) {
   const nivel = Math.floor(xp / 100) + 1
   const xpAtual = xp % 100
-  return { nivel, xpAtual, falta: 100 - xpAtual }
+  return { nivel, xpAtual }
 }
 
 const frasesSidebar = [
@@ -33,7 +32,6 @@ const frasesSidebar = [
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const router = useRouter()
   const { data } = usePlanner()
   const xp = data.xp || 0
   const habitos = (data.habitos || []) as any[]
@@ -61,37 +59,24 @@ export default function Sidebar() {
     const ativo = pathname === item.href
     return (
       <Link href={item.href} style={{ textDecoration: "none" }}>
-        <div style={{
-          padding: "8px 12px", borderRadius: 9, display: "flex", alignItems: "center",
-          gap: 10, marginBottom: 2, cursor: "pointer", transition: "all .15s",
-          background: ativo ? "#7c3aed20" : "transparent",
-          borderLeft: ativo ? "2px solid #7c3aed" : "2px solid transparent",
-        }}>
+        <div style={{ padding: "8px 12px", borderRadius: 9, display: "flex", alignItems: "center", gap: 10, marginBottom: 2, cursor: "pointer", transition: "all .15s", background: ativo ? "#7c3aed20" : "transparent", borderLeft: ativo ? "2px solid #7c3aed" : "2px solid transparent" }}>
           <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{item.icon}</span>
-          <span style={{ fontSize: 13, color: ativo ? "#c4b5fd" : "#6b6b8a", fontWeight: ativo ? 500 : 400 }}>
-            {item.label}
-          </span>
+          <span style={{ fontSize: 13, color: ativo ? "#c4b5fd" : "#6b6b8a", fontWeight: ativo ? 500 : 400 }}>{item.label}</span>
         </div>
       </Link>
     )
   }
 
   return (
-    <div style={{
-      width: 210, background: "#08080f", borderRight: "1px solid #0f0f22",
-      display: "flex", flexDirection: "column", flexShrink: 0,
-      minHeight: "100vh", position: "sticky", top: 0, height: "100vh", overflowY: "auto"
-    }}>
+    <div style={{ width: 210, background: "#08080f", borderRight: "1px solid #0f0f22", display: "flex", flexDirection: "column", flexShrink: 0, minHeight: "100vh", position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
 
       {/* Logo */}
       <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid #0f0f22" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 26, height: 26, background: "linear-gradient(135deg, #7c3aed, #a855f7)", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>✦</div>
-            <span style={{ fontWeight: 600, fontSize: 13, color: "#e2e8f0" }}>
-              <span style={{ color: "#a855f7" }}>Focus</span> Planner
-            </span>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 26, height: 26, background: "linear-gradient(135deg, #7c3aed, #a855f7)", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>✦</div>
+          <span style={{ fontWeight: 600, fontSize: 13, color: "#e2e8f0" }}>
+            <span style={{ color: "#a855f7" }}>Focus</span> Planner
+          </span>
         </div>
       </div>
 

@@ -1,154 +1,59 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { usePlanner } from "./context/PlannerContext"
 import { useRouter } from "next/navigation"
-import { getFeedbackState } from "./lib/feedbackEngine"
 
 const estadoConfig = {
-  leve:     { cor: "#10b981", icone: "🌱", badge: "Dia leve",     bordaHero: "#10b98120" },
-  estavel:  { cor: "#7c3aed", icone: "💜", badge: "Estável",       bordaHero: "#7c3aed20" },
-  atencao:  { cor: "#f59e0b", icone: "⚡", badge: "Atenção",       bordaHero: "#f59e0b20" },
-  protecao: { cor: "#fb923c", icone: "🌊", badge: "Vai com calma", bordaHero: "#fb923c20" },
-}
-
-function BotaoFeedback({ targetId, targetType, onFeedback }: { targetId: string; targetType: any; onFeedback: (r: "fez_sentido" | "nao_fez_sentido") => void }) {
-  const [resp, setResp] = useState<"sim" | "nao" | null>(() => getFeedbackState(targetId))
-  if (resp !== null) return (
-    <span style={{ fontSize: 10, color: "#3a3a5a", fontStyle: "italic" }}>
-      {resp === "sim" ? "✓ anotado" : "✓ entendido"}
-    </span>
-  )
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 10, color: "#3a3a5a" }}>fez sentido?</span>
-      <button onClick={() => { setResp("sim"); onFeedback("fez_sentido") }} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "2px 10px", color: "#059669", fontSize: 10, cursor: "pointer" }}>sim</button>
-      <button onClick={() => { setResp("nao"); onFeedback("nao_fez_sentido") }} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "2px 10px", color: "#f59e0b", fontSize: 10, cursor: "pointer" }}>não muito</button>
-    </div>
-  )
-}
-
-function Explicacao({ decisao, inteligencia, corEstado }: { decisao: any; inteligencia: any; corEstado: string }) {
-  const [aberto, setAberto] = useState(false)
-  const [feedback, setFeedback] = useState<"sim" | "nao" | null>(null)
-
-  const dados = [
-    decisao.sobrecargaScore < 40 ? "sua agenda parece mais tranquila hoje" : decisao.sobrecargaScore < 70 ? "você tem bastante coisa em aberto" : "muita coisa acumulada nos últimos dias",
-    decisao.energiaScore >= 60 ? "sua energia parece boa" : decisao.energiaScore >= 40 ? "energia em nível médio" : "energia mais baixa nos registros recentes",
-    decisao.clarezaScore >= 60 ? "clareza acima da média" : "clareza pode melhorar com um pouco de foco",
-    ...decisao.motivos.slice(0, 1),
-  ].slice(0, 4)
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <button onClick={() => setAberto(!aberto)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 11, color: "#3a3a5a" }}>{aberto ? "▾" : "▸"}</span>
-        <span style={{ fontSize: 11, color: "#3a3a5a", fontStyle: "italic" }}>como cheguei a isso?</span>
-      </button>
-      {aberto && (
-        <div style={{ background: "#0a0a14", border: "1px solid #0f0f22", borderRadius: 12, padding: "14px 16px", marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 10 }}>olhando seus registros de hoje:</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-            {dados.map((d, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 4, height: 4, borderRadius: "50%", background: corEstado, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, color: "#6b6b8a" }}>{d}</span>
-              </div>
-            ))}
-          </div>
-          {inteligencia.motivos.slice(0, 2).map((m: string, i: number) => (
-            <div key={i} style={{ fontSize: 10, color: "#3a3a5a", marginBottom: 3, display: "flex", gap: 4 }}>
-              <span style={{ color: corEstado }}>·</span><span>{m}</span>
-            </div>
-          ))}
-          {feedback === null ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
-              <span style={{ fontSize: 11, color: "#3a3a5a" }}>fez sentido?</span>
-              <button onClick={() => setFeedback("sim")} style={{ background: "#05906918", border: "1px solid #05906935", borderRadius: 20, padding: "3px 12px", color: "#059669", fontSize: 11, cursor: "pointer" }}>sim</button>
-              <button onClick={() => setFeedback("nao")} style={{ background: "#f59e0b18", border: "1px solid #f59e0b35", borderRadius: 20, padding: "3px 12px", color: "#f59e0b", fontSize: 11, cursor: "pointer" }}>não muito</button>
-            </div>
-          ) : (
-            <div style={{ fontSize: 11, color: "#4a4a6a", fontStyle: "italic", marginTop: 8 }}>
-              {feedback === "sim" ? "✓ obrigada. isso ajuda a afinar as sugestões." : "✓ faz sentido saber disso. obrigada."}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+  leve:     { cor: "#10b981", icone: "🌱", badge: "Dia leve"     },
+  estavel:  { cor: "#7c3aed", icone: "💜", badge: "Estável"      },
+  atencao:  { cor: "#f59e0b", icone: "⚡", badge: "Atenção"      },
+  protecao: { cor: "#fb923c", icone: "🌊", badge: "Vai com calma"},
 }
 
 export default function Central() {
-  const { data, setTarefas, analise, decisao, inteligencia, intervencoes, previsao, registrarFeedback } = usePlanner()
+  const { data, setTarefas, decisao, inteligencia } = usePlanner()
   const router = useRouter()
 
-  const tarefas = (data.tarefas  || []) as any[]
-  const habitos = (data.habitos  || []) as any[]
-  const metas   = (data.metas    || []) as any[]
-  const diario  = (data.diario   || []) as any[]
+  const tarefas = (data.tarefas || []) as any[]
+  const habitos = (data.habitos || []) as any[]
+  const metas   = (data.metas   || []) as any[]
+  const diario  = (data.diario  || []) as any[]
 
   const [projetos,     setProjetos]     = useState<any[]>([])
   const [blocos,       setBlocos]       = useState<any[]>([])
-  const [intencao,     setIntencao]     = useState("Manter clareza e disciplina.")
-  const [editIntencao, setEditIntencao] = useState(false)
   const [novaT,        setNovaT]        = useState("")
   const [mostrarNovaT, setMostrarNovaT] = useState(false)
+  const [anotacao,     setAnotacao]     = useState("")
 
   const hoje     = new Date().toISOString().slice(0, 10)
   const hora     = new Date().getHours()
   const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"
+  const emoji    = hora < 12 ? "🌤️" : hora < 18 ? "☀️" : "🌙"
 
   useEffect(() => {
     const p = localStorage.getItem("projetos-v1")
     if (p) setProjetos(JSON.parse(p))
     const b = localStorage.getItem("agenda-v3")
     if (b) setBlocos(JSON.parse(b).filter((bl: any) => bl.data === hoje).sort((a: any, z: any) => (a.horaInicio || "").localeCompare(z.horaInicio || "")))
-    const i = localStorage.getItem("foco-intencao")
-    if (i) setIntencao(i)
+    const a = localStorage.getItem("anotacao-rapida")
+    if (a) setAnotacao(a)
   }, [hoje])
 
-  const config       = estadoConfig[inteligencia.estadoGeral]
+  const config       = estadoConfig[inteligencia.estadoGeral as keyof typeof estadoConfig] ?? estadoConfig.estavel
   const corEstado    = config.cor
   const modoProtecao = inteligencia.mostrarModoProtecao
-  const blocoOculto  = (bloco: string) => inteligencia.blocosOcultos.includes(bloco)
-
-  const intervencaoPrinc = intervencoes[0]
 
   const tarefasHoje    = tarefas.filter((t: any) => t.data === hoje)
   const tarefasPend    = tarefasHoje.filter((t: any) => !t.feita)
-  const proximaTarefa  = tarefasPend[0]
-  const projetosAtivos = projetos.filter((p: any) => p.status === "Em andamento").slice(0, modoProtecao ? 0 : 3)
+  const projetosAtivos = projetos.filter((p: any) => p.status === "Em andamento")
+  const projetoAtivo   = projetosAtivos[0]
   const metasAtivas    = metas.filter((m: any) => (m.progresso || 0) < 100).slice(0, 3)
+  const proximoHabito  = habitos.find((h: any) => !(h.historico || []).includes(hoje))
 
   const ultimaDiario = diario.filter((e: any) => e.data === hoje)[0]
     || [...diario].sort((a: any, b: any) => b.data.localeCompare(a.data))[0]
-  const energia   = ultimaDiario?.checkin?.energia   || 6
-  const clareza   = ultimaDiario?.checkin?.clareza   || 7
-  const motivacao = ultimaDiario?.checkin?.humor     || 6
-
-  const ajudando = useMemo(() => {
-    const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
-    analise.correlacoes.filter(c => c.tipo === "positiva").slice(0, 3).forEach(c => {
-      lista.push({ icone: c.origem === "exercicio" ? "🏃" : c.origem === "sono" ? "🌙" : c.origem === "rotina" ? "📅" : "✨", label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1), descricao: c.descricao, valor: `+${Math.round(c.intensidade * 100)}%` })
-    })
-    if (!lista.length) {
-      lista.push({ icone: "🌙", label: "Sono",     descricao: "Noites bem dormidas parecem melhorar sua clareza mental.", valor: "+28%" })
-      lista.push({ icone: "🏃", label: "Exercício", descricao: "Dias de treino tendem a ter mais energia registrada.",     valor: "+23%" })
-    }
-    return lista.slice(0, 3)
-  }, [analise.correlacoes])
-
-  const prejudicando = useMemo(() => {
-    const lista: { icone: string; label: string; descricao: string; valor: string }[] = []
-    analise.correlacoes.filter(c => c.tipo === "negativa").slice(0, 3).forEach(c => {
-      lista.push({ icone: c.origem === "tela" ? "📱" : "🌀", label: c.origem.charAt(0).toUpperCase() + c.origem.slice(1), descricao: c.descricao, valor: `-${Math.round(c.intensidade * 100)}%` })
-    })
-    if (!lista.length) {
-      lista.push({ icone: "📱", label: "Excesso de tela", descricao: "Excesso de tela parece aumentar ansiedade nos dias seguintes.", valor: "-21%" })
-      lista.push({ icone: "😴", label: "Pouco sono",      descricao: "Dormir menos de 6h impacta o humor do dia seguinte.",         valor: "-17%" })
-    }
-    return lista.slice(0, 3)
-  }, [analise.correlacoes])
+  const sono = ultimaDiario?.checkin?.sono ?? ultimaDiario?.sono ?? null
 
   function toggleTarefa(id: number) {
     setTarefas(tarefas.map((t: any) => t.id === id ? { ...t, feita: !t.feita } : t) as any)
@@ -156,488 +61,600 @@ export default function Central() {
 
   function adicionarTarefa() {
     if (!novaT.trim()) return
-    setTarefas([...tarefas, { id: Date.now(), texto: novaT.trim(), descricao: "", categoria: "Pessoal", prioridade: "Média", hora: "", feita: false, data: hoje }] as any)
-    setNovaT(""); setMostrarNovaT(false)
+    setTarefas([...tarefas, {
+      id: Date.now(), texto: novaT.trim(), descricao: "",
+      categoria: "Pessoal", prioridade: "Média",
+      hora: "", feita: false, data: hoje
+    }] as any)
+    setNovaT("")
+    setMostrarNovaT(false)
   }
 
-  function salvarIntencao(val: string) {
-    setIntencao(val)
-    localStorage.setItem("foco-intencao", val)
-    setEditIntencao(false)
+  function salvarAnotacao(val: string) {
+    setAnotacao(val)
+    localStorage.setItem("anotacao-rapida", val)
   }
-
-  const circ = 2 * Math.PI * 38
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", minHeight: "100vh", color: "#e2e8f0", background: "#07070f" }}>
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 260px",
+      minHeight: "100vh",
+      color: "#e2e8f0",
+      background: "#07070f"
+    }}>
 
-      {/* COLUNA PRINCIPAL */}
+      {/* ── COLUNA PRINCIPAL ─────────────────────────────────── */}
       <div style={{ padding: "22px 28px", overflowY: "auto" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Central</h1>
-              <span style={{ fontSize: 14, color: "#7c3aed" }}>✦</span>
-            </div>
-            <p style={{ fontSize: 12, color: "#3a3a5a", margin: 0 }}>Tudo o que importa, no lugar certo.</p>
+            <h1 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 3px" }}>
+              {saudacao} {emoji}
+            </h1>
+            <p style={{ fontSize: 12, color: "#4a4a6a", margin: 0 }}>Foque no que importa hoje.</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 13, color: "#6b6b8a" }}>{saudacao} ☀️</div>
-            <div style={{ background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 20, padding: "4px 12px", fontSize: 12, color: corEstado, display: "flex", alignItems: "center", gap: 5 }}>
-              <span>{config.icone}</span> {config.badge}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              background: `${corEstado}18`, border: `1px solid ${corEstado}35`,
+              borderRadius: 20, padding: "5px 14px",
+              fontSize: 12, color: corEstado,
+              display: "flex", alignItems: "center", gap: 5
+            }}>
+              {config.icone} {config.badge}
             </div>
-            <div style={{ background: "#7c3aed20", border: "1px solid #7c3aed30", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#a855f7" }}>
+            <div style={{
+              background: "#7c3aed18", border: "1px solid #7c3aed30",
+              borderRadius: 20, padding: "5px 14px",
+              fontSize: 12, color: "#a855f7"
+            }}>
               ⚡ {data.xp} XP
             </div>
           </div>
         </div>
 
-        {/* Alerta suave */}
-        {inteligencia.alertaSuave && (
-          <div style={{ background: `${corEstado}10`, border: `1px solid ${corEstado}30`, borderRadius: 10, padding: "8px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13 }}>{config.icone}</span>
-            <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>{inteligencia.alertaSuave}</span>
+        {/* Card HOJE */}
+        <div style={{
+          background: "#0f0f1c", border: "1px solid #1a1a2e",
+          borderRadius: 16, padding: "18px 22px", marginBottom: 14
+        }}>
+          <div style={{
+            fontSize: 11, color: "#3a3a5a", fontWeight: 600,
+            textTransform: "uppercase", letterSpacing: "0.08em",
+            marginBottom: 16, display: "flex", alignItems: "center", gap: 6
+          }}>
+            📋 HOJE
           </div>
-        )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
 
-        {/* Banner modo proteção */}
-        {modoProtecao && (
-          <div style={{ background: `${corEstado}12`, border: `1px solid ${corEstado}35`, borderRadius: 12, padding: "12px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 18 }}>{config.icone}</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: corEstado, marginBottom: 2 }}>vai com calma hoje</div>
-              <div style={{ fontSize: 12, color: "#6b6b8a" }}>Sua missão agora é atravessar o dia com menos ruído. Uma coisa de cada vez.</div>
-            </div>
-            <button onClick={() => router.push("/foco")} style={{ background: `${corEstado}20`, border: `1px solid ${corEstado}40`, borderRadius: 8, padding: "6px 14px", color: corEstado, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
-              entrar em foco →
-            </button>
-          </div>
-        )}
-
-        {/* Hero */}
-        <div style={{ background: "linear-gradient(135deg, #0d0d1e, #12101e)", border: `1px solid ${config.bordaHero}`, borderRadius: 18, padding: "22px 26px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 65% 50%, ${corEstado}0a, transparent 60%)`, pointerEvents: "none" }} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 28, alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>✦ foco da sua vida hoje</div>
-              {editIntencao ? (
-                <input autoFocus defaultValue={intencao}
-                  onBlur={e => salvarIntencao(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && salvarIntencao((e.target as HTMLInputElement).value)}
-                  style={{ fontSize: 22, fontWeight: 300, background: "none", border: "none", borderBottom: `1px solid ${corEstado}40`, color: "#e2e8f0", outline: "none", width: "100%", marginBottom: 8 }} />
-              ) : (
-                <h2 style={{ fontSize: 24, fontWeight: 300, margin: "0 0 8px", color: "#e2e8f0", lineHeight: 1.3, cursor: "pointer" }} onClick={() => setEditIntencao(true)}>
-                  {intencao}
-                </h2>
+            {/* Sono */}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 5 }}>🌙</div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "#e2e8f0", marginBottom: 2 }}>
+                {sono != null ? `${sono}h` : "—"}
+              </div>
+              <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 5 }}>de sono</div>
+              {sono != null && (
+                <span style={{
+                  fontSize: 9, padding: "2px 8px", borderRadius: 20,
+                  background: sono >= 7 ? "#05906918" : "#f59e0b18",
+                  color: sono >= 7 ? "#059669" : "#f59e0b",
+                  border: `1px solid ${sono >= 7 ? "#05906930" : "#f59e0b30"}`
+                }}>
+                  {sono >= 7 ? "Bom" : "Pouco"}
+                </span>
               )}
-              <p style={{ fontSize: 13, color: "#6b6b8a", margin: "0 0 16px", fontStyle: "italic", lineHeight: 1.6 }}>
-                {inteligencia.mensagemCentral}
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setEditIntencao(true)} style={{ background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 20, padding: "7px 16px", color: corEstado, fontSize: 12, cursor: "pointer" }}>
-                  ✦ definir intenção
-                </button>
-                <button onClick={() => router.push("/foco")} style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 20, padding: "7px 16px", color: "#6b6b8a", fontSize: 12, cursor: "pointer" }}>
-                  ⏱ iniciar foco
-                </button>
-              </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 190 }}>
-              {[
-                { label: "energia",        valor: energia,   cor: "#f59e0b", icone: "⚡" },
-                { label: "clareza mental", valor: clareza,   cor: "#7c3aed", icone: "🧠" },
-                { label: "motivação",      valor: motivacao, cor: "#10b981", icone: "✨" },
-              ].map((m, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 13 }}>{m.icone}</span>
-                  <span style={{ fontSize: 11, color: "#6b6b8a", minWidth: 100 }}>{m.label}</span>
-                  <div style={{ flex: 1, background: "#1a1a2e", borderRadius: 20, height: 5 }}>
-                    <div style={{ background: m.cor, height: 5, borderRadius: 20, width: `${m.valor * 10}%`, transition: "width .4s", boxShadow: `0 0 5px ${m.cor}50` }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: m.cor, minWidth: 28, textAlign: "right" }}>{m.valor}/10</span>
-                </div>
-              ))}
-              <div style={{ fontSize: 9, color: "#2a2a45", textAlign: "right" }}>
-                {ultimaDiario ? "do diário" : "registre no diário"}
+
+            {/* Compromissos */}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 5 }}>📅</div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "#e2e8f0", marginBottom: 2 }}>
+                {blocos.length}
               </div>
+              <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 5 }}>compromissos</div>
+              <span style={{
+                fontSize: 9, padding: "2px 8px", borderRadius: 20,
+                background: "#1a1a2e", color: "#6b6b8a"
+              }}>
+                {blocos.length === 0 ? "Dia livre" : `às ${blocos[0]?.horaInicio}`}
+              </span>
+            </div>
+
+            {/* Tarefas */}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 5 }}>✅</div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "#e2e8f0", marginBottom: 2 }}>
+                {tarefasPend.length}
+              </div>
+              <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 5 }}>pendentes</div>
+              <span style={{
+                fontSize: 9, padding: "2px 8px", borderRadius: 20,
+                background: tarefasPend.length === 0 ? "#05906918" : "#7c3aed18",
+                color: tarefasPend.length === 0 ? "#059669" : "#a855f7",
+                border: `1px solid ${tarefasPend.length === 0 ? "#05906930" : "#7c3aed30"}`
+              }}>
+                {tarefasPend.length === 0 ? "Tudo feito!" : "Foque nisso"}
+              </span>
+            </div>
+
+            {/* Próximo hábito */}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 5 }}>
+                {proximoHabito?.icone || "🏃"}
+              </div>
+              <div style={{
+                fontSize: 12, fontWeight: 600, color: "#e2e8f0",
+                marginBottom: 2, overflow: "hidden",
+                textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
+                {proximoHabito?.nome || "—"}
+              </div>
+              <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 5 }}>próximo hábito</div>
+              {proximoHabito && (
+                <span style={{
+                  fontSize: 9, padding: "2px 8px", borderRadius: 20,
+                  background: "#10b98118", color: "#10b981",
+                  border: "1px solid #10b98130"
+                }}>
+                  Movimente-se
+                </span>
+              )}
+            </div>
+
+            {/* Projeto ativo */}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 5 }}>
+                {projetoAtivo?.icone || "💻"}
+              </div>
+              <div style={{
+                fontSize: 12, fontWeight: 600, color: "#e2e8f0",
+                marginBottom: 2, overflow: "hidden",
+                textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
+                {projetoAtivo?.nome || "—"}
+              </div>
+              <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 5 }}>projeto ativo</div>
+              {projetoAtivo && (
+                <span style={{
+                  fontSize: 9, padding: "2px 8px", borderRadius: 20,
+                  background: "#7c3aed18", color: "#a855f7",
+                  border: "1px solid #7c3aed30"
+                }}>
+                  {projetoAtivo.progresso || 0}%
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Por onde começar */}
-        <div style={{ background: `linear-gradient(135deg, ${corEstado}10, ${corEstado}06)`, border: `1px solid ${corEstado}30`, borderRadius: 14, padding: "14px 20px", marginBottom: 8, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", background: `${corEstado}20`, border: `1.5px solid ${corEstado}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-            {config.icone}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: corEstado, fontWeight: 500, marginBottom: 3, letterSpacing: "0.04em" }}>por onde começar</div>
-            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 6 }}>
-              {inteligencia.acaoDestacada || decisao.sugestaoImediata}
-            </div>
-            <BotaoFeedback targetId="acao-agora" targetType="decision"
-              onFeedback={r => registrarFeedback({ targetId: "acao-agora", targetType: "decision", resposta: r })} />
-          </div>
-          {!modoProtecao && (
-            <button onClick={() => router.push("/foco")} style={{ background: `${corEstado}20`, border: `1px solid ${corEstado}40`, borderRadius: 8, padding: "7px 14px", color: corEstado, fontSize: 11, cursor: "pointer", flexShrink: 0 }}>
-              começar →
-            </button>
-          )}
-        </div>
-
-        <Explicacao decisao={decisao} inteligencia={inteligencia} corEstado={corEstado} />
-
-        {/* Intervenção principal */}
-        {intervencaoPrinc && !inteligencia.blocosOcultos.includes("sugestoes_automaticas") && (
-          <div style={{ background: "#0a0a18", border: `1px solid ${corEstado}25`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: `${corEstado}18`, border: `1px solid ${corEstado}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
-              {intervencaoPrinc.tipo === "foco" ? "🎯" : intervencaoPrinc.tipo === "protecao" ? "🛡️" : intervencaoPrinc.tipo === "descanso" ? "☁️" : intervencaoPrinc.tipo === "reducao" ? "📋" : intervencaoPrinc.tipo === "expansao" ? "🚀" : "📅"}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 3 }}>{intervencaoPrinc.titulo}</div>
-              <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5, marginBottom: 6 }}>{intervencaoPrinc.descricao}</div>
-              <div style={{ fontSize: 10, color: corEstado, fontStyle: "italic", marginBottom: 6 }}>{intervencaoPrinc.acaoPrincipal}</div>
-              <BotaoFeedback targetId={intervencaoPrinc.id} targetType="intervention"
-                onFeedback={r => registrarFeedback({ targetId: intervencaoPrinc.id, targetType: "intervention", resposta: r })} />
-            </div>
+        {/* Banner Modo Proteção */}
+        {modoProtecao && (
+          <div style={{
+            background: `${corEstado}12`, border: `1px solid ${corEstado}35`,
+            borderRadius: 12, padding: "12px 18px", marginBottom: 14,
+            display: "flex", alignItems: "center", gap: 12
+          }}>
+            <span style={{ fontSize: 18 }}>{config.icone}</span>
+            <p style={{ flex: 1, fontSize: 12, color: "#6b6b8a", margin: 0, fontStyle: "italic" }}>
+              Vai com calma hoje. Uma coisa de cada vez.
+            </p>
           </div>
         )}
 
-        {/* Grid principal */}
-        <div style={{ display: "grid", gridTemplateColumns: modoProtecao ? "1fr 1fr" : "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-
-          {/* Próxima ação */}
-          <div style={{ background: "#0f0f1c", border: `1px solid ${modoProtecao ? corEstado + "40" : "#1a1a2e"}`, borderRadius: 14, padding: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span>✦</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{modoProtecao ? "uma coisa só" : "próxima ação"}</span>
-            </div>
-            {modoProtecao ? (
-              <div>
-                <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 12px", fontStyle: "italic" }}>
-                  {inteligencia.prioridadeAtual}
-                </p>
-                {proximaTarefa && (
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", background: `${corEstado}10`, borderRadius: 10, border: `1px solid ${corEstado}25` }}>
-                    <div onClick={() => toggleTarefa(proximaTarefa.id)} style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${corEstado}60`, flexShrink: 0, marginTop: 1, cursor: "pointer" }} />
-                    <span style={{ fontSize: 13, color: "#e2e8f0" }}>{proximaTarefa.texto}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                {proximaTarefa ? (
-                  <>
-                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                      <div onClick={() => toggleTarefa(proximaTarefa.id)} style={{ width: 17, height: 17, borderRadius: 5, border: "1.5px solid #2e2e4e", flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
-                      <span style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.5 }}>{proximaTarefa.texto}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                      {proximaTarefa.categoria && <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 20, background: "#7c3aed18", color: "#a855f7" }}>{proximaTarefa.categoria}</span>}
-                      {proximaTarefa.prioridade && <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 20, background: "#f59e0b18", color: "#f59e0b" }}>{proximaTarefa.prioridade}</span>}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 13, color: "#4a4a6a", marginBottom: 8 }}>
-                    {tarefasHoje.length > 0 ? "✓ tudo feito hoje!" : "nenhuma tarefa para hoje."}
-                  </div>
-                )}
-                <p style={{ fontSize: 11, color: "#3a3a5a", margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>
-                  {inteligencia.prioridadeAtual}
-                </p>
-              </>
-            )}
-            <button onClick={() => router.push("/tarefas")} style={{ marginTop: 12, background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>
-              ver todas →
-            </button>
+        {/* ▶ Iniciar Foco */}
+        <button
+          onClick={() => router.push("/foco")}
+          style={{
+            width: "100%",
+            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+            border: "none", borderRadius: 14,
+            padding: "18px 24px", color: "#fff",
+            cursor: "pointer", display: "flex",
+            alignItems: "center", gap: 16,
+            marginBottom: 14,
+            boxShadow: "0 4px 20px #7c3aed35",
+            transition: "opacity .15s"
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
+          onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+        >
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%",
+            background: "#ffffff18",
+            display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 20, flexShrink: 0
+          }}>
+            ▶
           </div>
+          <div style={{ flex: 1, textAlign: "left" }}>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 2 }}>Iniciar foco</div>
+            <div style={{ fontSize: 12, color: "#c4b5fd" }}>Sessão de foco com timer</div>
+          </div>
+          <div style={{
+            background: "#ffffff18", borderRadius: 20,
+            padding: "5px 16px", fontSize: 13, fontWeight: 500
+          }}>
+            25 min
+          </div>
+        </button>
 
-          {/* Agenda */}
+        {/* Grid Tarefas + Agenda */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+          {/* Tarefas do dia */}
           <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>📅</span>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>agenda de hoje</span>
-              </div>
-              <button onClick={() => router.push("/agenda")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>TAREFAS DO DIA</span>
+              <span style={{ fontSize: 11, color: "#4a4a6a" }}>{tarefasPend.length} pendentes</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {tarefasHoje.slice(0, 6).map((t: any) => (
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    onClick={() => toggleTarefa(t.id)}
+                    style={{
+                      width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                      border: t.feita ? "none" : "1.5px solid #2e2e4e",
+                      background: t.feita ? "#7c3aed" : "transparent",
+                      cursor: "pointer", display: "flex",
+                      alignItems: "center", justifyContent: "center",
+                      fontSize: 10, color: "#fff"
+                    }}
+                  >
+                    {t.feita ? "✓" : ""}
+                  </div>
+                  <span style={{
+                    flex: 1, fontSize: 12,
+                    color: t.feita ? "#3a3a5a" : "#94a3b8",
+                    textDecoration: t.feita ? "line-through" : "none",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                  }}>
+                    {t.texto}
+                  </span>
+                  {!t.feita && (
+                    <span style={{
+                      fontSize: 9, padding: "1px 7px", borderRadius: 20, flexShrink: 0,
+                      background: t.prioridade === "Alta" ? "#7c3aed18" : "#f59e0b18",
+                      color: t.prioridade === "Alta" ? "#a855f7" : "#f59e0b"
+                    }}>
+                      {t.prioridade}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {tarefasHoje.length === 0 && (
+                <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhuma tarefa para hoje.</div>
+              )}
+            </div>
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {mostrarNovaT ? (
+                <div style={{ display: "flex", gap: 6, width: "100%" }}>
+                  <input
+                    autoFocus value={novaT}
+                    onChange={e => setNovaT(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && adicionarTarefa()}
+                    placeholder="nova tarefa..."
+                    style={{
+                      flex: 1, background: "#12121f",
+                      border: "1px solid #1e1e35", borderRadius: 7,
+                      padding: "6px 10px", color: "#e2e8f0",
+                      fontSize: 12, outline: "none"
+                    }}
+                  />
+                  <button
+                    onClick={adicionarTarefa}
+                    style={{
+                      background: "#7c3aed", border: "none",
+                      borderRadius: 7, padding: "6px 12px",
+                      color: "#fff", cursor: "pointer", fontSize: 12
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setMostrarNovaT(true)}
+                  style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}
+                >
+                  + Nova tarefa
+                </button>
+              )}
+              <button
+                onClick={() => router.push("/tarefas")}
+                style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}
+              >
+                Ver tudo
+              </button>
+            </div>
+          </div>
+
+          {/* Agenda de hoje */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>AGENDA DE HOJE</span>
+              <button
+                onClick={() => router.push("/agenda")}
+                style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}
+              >
+                Ver tudo
+              </button>
             </div>
             {blocos.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#4a4a6a" }}>nenhum compromisso hoje.</div>
+              <div style={{
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center",
+                padding: "18px 0", gap: 8
+              }}>
+                <span style={{ fontSize: 30, opacity: 0.25 }}>📅</span>
+                <div style={{ fontSize: 13, color: "#3a3a5a", fontWeight: 500 }}>Sua agenda está livre!</div>
+                <div style={{ fontSize: 11, color: "#2a2a45", textAlign: "center", lineHeight: 1.6 }}>
+                  Aproveite o dia para focar no que realmente importa.
+                </div>
+              </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {blocos.slice(0, 4).map((b: any, i: number) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {blocos.slice(0, 5).map((b: any, i: number) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 11, color: "#4a4a6a", width: 36, flexShrink: 0 }}>{b.horaInicio}</span>
+                    <span style={{ fontSize: 11, color: "#4a4a6a", width: 38, flexShrink: 0 }}>{b.horaInicio}</span>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: b.cor || "#7c3aed", flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.titulo}</span>
+                    <span style={{
+                      flex: 1, fontSize: 12, color: "#94a3b8",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                    }}>
+                      {b.titulo}
+                    </span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
-          {/* Projetos */}
-          {!modoProtecao && !blocoOculto("projetos") && (
-            <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>🚀</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>projetos ativos</span>
-                </div>
-                <button onClick={() => router.push("/projetos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
-              </div>
-              {projetosAtivos.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#4a4a6a" }}>nenhum projeto ativo.</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {projetosAtivos.map((p: any) => (
-                    <div key={p.id} onClick={() => router.push(`/projetos/${p.id}`)} style={{ cursor: "pointer" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 14 }}>{p.icone}</span>
-                        <span style={{ flex: 1, fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nome}</span>
-                        <span style={{ fontSize: 11, color: p.cor || "#7c3aed" }}>{p.progresso || 0}%</span>
-                      </div>
-                      <div style={{ background: "#1a1a2e", borderRadius: 20, height: 3 }}>
-                        <div style={{ background: p.cor || "#7c3aed", height: 3, borderRadius: 20, width: `${p.progresso || 0}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Metas + Tarefas */}
-        {!modoProtecao && !blocoOculto("metas") && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-            <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>🎯</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>metas em andamento</span>
-                </div>
-                <button onClick={() => router.push("/metas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
-              </div>
-              {metasAtivas.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#4a4a6a" }}>nenhuma meta ativa.</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {metasAtivas.map((m: any) => (
-                    <div key={m.id}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "78%" }}>{m.titulo}</span>
-                        <span style={{ fontSize: 11, color: "#7c3aed" }}>{m.progresso || 0}%</span>
-                      </div>
-                      <div style={{ background: "#1a1a2e", borderRadius: 20, height: 4 }}>
-                        <div style={{ background: "linear-gradient(90deg, #7c3aed, #a855f7)", height: 4, borderRadius: 20, width: `${m.progresso || 0}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Grid Hábitos + Projeto */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
 
-            <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>✅</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>tarefas de hoje</span>
-                </div>
-                <button onClick={() => router.push("/tarefas")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {tarefasHoje.slice(0, 5).map((t: any) => (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div onClick={() => toggleTarefa(t.id)} style={{ width: 15, height: 15, borderRadius: 4, border: t.feita ? "none" : "1.5px solid #2e2e4e", background: t.feita ? "#7c3aed" : "transparent", flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff" }}>
-                      {t.feita ? "✓" : ""}
+          {/* Hábitos de hoje */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>HÁBITOS DE HOJE</span>
+              <button
+                onClick={() => router.push("/habitos")}
+                style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}
+              >
+                Ver todos
+              </button>
+            </div>
+            {habitos.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhum hábito cadastrado.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {habitos.slice(0, 5).map((h: any) => {
+                  const feito = (h.historico || []).includes(hoje)
+                  return (
+                    <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 16 }}>{h.icone}</span>
+                      <span style={{
+                        flex: 1, fontSize: 12,
+                        color: feito ? "#4a4a6a" : "#94a3b8",
+                        textDecoration: feito ? "line-through" : "none"
+                      }}>
+                        {h.nome}
+                      </span>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 6,
+                        background: feito ? "#7c3aed" : "#1a1a2e",
+                        border: feito ? "none" : "1.5px solid #2e2e4e",
+                        display: "flex", alignItems: "center",
+                        justifyContent: "center", fontSize: 10, color: "#fff"
+                      }}>
+                        {feito ? "✓" : ""}
+                      </div>
                     </div>
-                    <span style={{ flex: 1, fontSize: 12, color: t.feita ? "#4a4a6a" : "#94a3b8", textDecoration: t.feita ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.texto}</span>
-                    <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 20, background: t.prioridade === "Alta" ? "#7c3aed18" : "#f59e0b18", color: t.prioridade === "Alta" ? "#a855f7" : "#f59e0b", flexShrink: 0 }}>{t.prioridade}</span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Projeto atual */}
+          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>PROJETO ATUAL</span>
+              <button
+                onClick={() => router.push("/projetos")}
+                style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}
+              >
+                Ver detalhes
+              </button>
+            </div>
+            {projetoAtivo ? (
+              <div
+                onClick={() => router.push(`/projetos/${projetoAtivo.id}`)}
+                style={{ cursor: "pointer" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: "#1a1a2e", display: "flex",
+                    alignItems: "center", justifyContent: "center", fontSize: 20
+                  }}>
+                    {projetoAtivo.icone}
                   </div>
-                ))}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "#e2e8f0" }}>{projetoAtivo.nome}</div>
+                    <div style={{ fontSize: 11, color: "#4a4a6a" }}>Projeto ativo</div>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: projetoAtivo.cor || "#7c3aed" }}>
+                    {projetoAtivo.progresso || 0}%
+                  </div>
+                </div>
+                <div style={{ background: "#1a1a2e", borderRadius: 20, height: 5, marginBottom: 12 }}>
+                  <div style={{
+                    background: `linear-gradient(90deg, ${projetoAtivo.cor || "#7c3aed"}, #a855f7)`,
+                    height: 5, borderRadius: 20,
+                    width: `${projetoAtivo.progresso || 0}%`,
+                    transition: "width .4s"
+                  }} />
+                </div>
+                {projetoAtivo.proximoPasso && (
+                  <div>
+                    <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 4 }}>Próximo passo</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12, color: "#94a3b8" }}>{projetoAtivo.proximoPasso}</span>
+                      <span style={{ fontSize: 14, color: "#4a4a6a" }}>›</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              {mostrarNovaT ? (
-                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                  <input autoFocus value={novaT} onChange={e => setNovaT(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && adicionarTarefa()}
-                    placeholder="nova tarefa..."
-                    style={{ flex: 1, background: "#12121f", border: "1px solid #1e1e35", borderRadius: 7, padding: "6px 10px", color: "#e2e8f0", fontSize: 12, outline: "none" }} />
-                  <button onClick={adicionarTarefa} style={{ background: "#7c3aed", border: "none", borderRadius: 7, padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: 12 }}>+</button>
-                </div>
-              ) : (
-                <button onClick={() => setMostrarNovaT(true)} style={{ marginTop: 10, background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>
-                  + nova tarefa
-                </button>
-              )}
-            </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "#4a4a6a" }}>Nenhum projeto ativo.</div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Modo proteção: só essencial */}
-        {modoProtecao && (
-          <div style={{ background: "#0f0f1c", border: `1px solid ${corEstado}25`, borderRadius: 14, padding: 18, marginBottom: 14 }}>
-            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 10 }}>o essencial de hoje</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {tarefasHoje.filter((t: any) => t.prioridade === "Alta" && !t.feita).slice(0, 3).map((t: any) => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div onClick={() => toggleTarefa(t.id)} style={{ width: 15, height: 15, borderRadius: 4, border: "1.5px solid #2e2e4e", flexShrink: 0, cursor: "pointer" }} />
-                  <span style={{ fontSize: 13, color: "#94a3b8" }}>{t.texto}</span>
-                </div>
-              ))}
-              {tarefasHoje.filter((t: any) => t.prioridade === "Alta" && !t.feita).length === 0 && (
-                <div style={{ fontSize: 12, color: "#4a4a6a", fontStyle: "italic" }}>nada urgente. descanse um pouco.</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Observação final */}
-        <div style={{ background: "linear-gradient(135deg, #0f0f1c, #12111e)", border: `1px solid ${corEstado}20`, borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg, ${corEstado}, ${corEstado}aa)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, boxShadow: `0 0 14px ${corEstado}35` }}>
-            {config.icone}
+        {/* Mini diário */}
+        <div style={{
+          background: "#0f0f1c", border: "1px solid #1a1a2e",
+          borderRadius: 14, padding: "16px 20px",
+          display: "flex", alignItems: "center", gap: 16
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: "50%",
+            background: "#1a1a2e",
+            display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 20, flexShrink: 0
+          }}>
+            🙂
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: corEstado, fontWeight: 500, marginBottom: 3 }}>uma observação ✦</div>
-            <p style={{ fontSize: 12, color: "#6b6b8a", margin: "0 0 6px", lineHeight: 1.6, fontStyle: "italic" }}>
-              {inteligencia.insightPrincipal}
-            </p>
-            <BotaoFeedback targetId="insight-principal" targetType="insight"
-              onFeedback={r => registrarFeedback({ targetId: "insight-principal", targetType: "insight", resposta: r })} />
+            <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Como você está hoje?
+            </div>
+            <div style={{ fontSize: 12, color: "#6b6b8a" }}>
+              Uma frase já ajuda a organizar o que você sente.
+            </div>
           </div>
-          <button onClick={() => router.push("/evolucao")} style={{ background: `${corEstado}15`, border: `1px solid ${corEstado}30`, borderRadius: 8, padding: "7px 14px", color: corEstado, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-            ver evolução →
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 11, color: "#3a3a5a" }}>Registro rápido</span>
+            <button
+              onClick={() => router.push("/diario")}
+              style={{
+                background: "#7c3aed", border: "none",
+                borderRadius: 8, padding: "8px 18px",
+                color: "#fff", fontSize: 12,
+                cursor: "pointer", fontWeight: 500
+              }}
+            >
+              Registrar
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* COLUNA DIREITA */}
-      <div style={{ background: "#08080f", borderLeft: "1px solid #0f0f22", padding: "22px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* ── SIDEBAR DIREITA ───────────────────────────────────── */}
+      <div style={{
+        background: "#08080f",
+        borderLeft: "1px solid #0f0f22",
+        padding: "22px 16px",
+        overflowY: "auto",
+        display: "flex", flexDirection: "column", gap: 14
+      }}>
 
-        {/* Como você está */}
-        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-            <span>✦</span>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>como você está hoje?</span>
+        {/* Resumo rápido */}
+        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16, textAlign: "center" }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: "50%",
+            background: `${corEstado}18`, border: `2px solid ${corEstado}40`,
+            display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 28,
+            margin: "0 auto 10px"
+          }}>
+            {config.icone}
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
-            <div style={{ position: "relative", width: 82, height: 82, flexShrink: 0 }}>
-              <svg width="82" height="82" viewBox="0 0 82 82">
-                <circle cx="41" cy="41" r="38" fill="none" stroke="#1a1a2e" strokeWidth="6" />
-                <circle cx="41" cy="41" r="38" fill="none" stroke={corEstado} strokeWidth="6"
-                  strokeDasharray={`${circ * decisao.sobrecargaScore / 100} ${circ}`}
-                  strokeLinecap="round" transform="rotate(-90 41 41)"
-                  style={{ filter: `drop-shadow(0 0 5px ${corEstado}60)`, transition: "stroke-dasharray .5s" }} />
-              </svg>
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: corEstado }}>{decisao.sobrecargaScore}%</div>
-                <div style={{ fontSize: 9, color: corEstado }}>{config.badge}</div>
-              </div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "#e2e8f0", marginBottom: 2 }}>
+            {config.badge}
+          </div>
+          <div style={{ fontSize: 11, color: "#4a4a6a" }}>Continue assim!</div>
+        </div>
+
+        {/* Em foco */}
+        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
+          <div style={{
+            fontSize: 11, color: "#4a4a6a",
+            textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12
+          }}>
+            ✦ EM FOCO
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 4 }}>Prioridade de hoje</div>
+            <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+              {inteligencia.prioridadeAtual || "Manter consistência nos hábitos"}
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 12, color: "#6b6b8a", lineHeight: 1.6, margin: "0 0 8px" }}>
-                {inteligencia.mensagemCentral}
-              </p>
-              {inteligencia.motivos.slice(0, 2).map((m, i) => (
-                <div key={i} style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 3, display: "flex", gap: 4 }}>
-                  <span style={{ color: corEstado }}>·</span><span>{m}</span>
-                </div>
-              ))}
-              {modoProtecao && (
-                <button onClick={() => router.push("/tarefas")} style={{ marginTop: 8, background: `${corEstado}18`, border: `1px solid ${corEstado}35`, borderRadius: 8, padding: "5px 12px", color: corEstado, fontSize: 11, cursor: "pointer" }}>
-                  simplificar →
-                </button>
-              )}
+          </div>
+          <div style={{ borderTop: "1px solid #1a1a2e", paddingTop: 12 }}>
+            <div style={{ fontSize: 10, color: "#4a4a6a", marginBottom: 4 }}>💡 Lembrete</div>
+            <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5, fontStyle: "italic" }}>
+              Pequenas ações geram grandes mudanças.
             </div>
           </div>
         </div>
 
-        {/* Tendência */}
-        {(previsao.riscoSobrecarga > 30 || previsao.tendenciaClareza !== "estavel") && (
+        {/* Próximo hábito */}
+        {proximoHabito && (
           <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>o que os registros sugerem</div>
-            <p style={{ fontSize: 12, color: "#6b6b8a", lineHeight: 1.6, margin: "0 0 10px", fontStyle: "italic" }}>
-              {previsao.mensagemPrevisiva}
-            </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              {[
-                { label: "clareza", tend: previsao.tendenciaClareza },
-                { label: "energia", tend: previsao.tendenciaEnergia },
-              ].map((t, i) => (
-                <div key={i} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: t.tend === "subindo" ? "#05906918" : t.tend === "caindo" ? "#dc262618" : "#1a1a2e", color: t.tend === "subindo" ? "#059669" : t.tend === "caindo" ? "#f87171" : "#6b6b8a", border: `1px solid ${t.tend === "subindo" ? "#05906930" : t.tend === "caindo" ? "#dc262630" : "#1e1e35"}` }}>
-                  {t.label} {t.tend === "subindo" ? "↑" : t.tend === "caindo" ? "↓" : "→"}
-                </div>
-              ))}
+            <div style={{
+              fontSize: 11, color: "#4a4a6a",
+              textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12
+            }}>
+              🏃 PRÓXIMO HÁBITO
             </div>
-            <BotaoFeedback targetId="previsao-tendencia" targetType="forecast"
-              onFeedback={r => registrarFeedback({ targetId: "previsao-tendencia", targetType: "forecast", resposta: r })} />
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#e2e8f0", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{proximoHabito.icone}</span> {proximoHabito.nome}
+            </div>
+            {proximoHabito.horario && (
+              <div style={{ fontSize: 12, color: "#4a4a6a", marginBottom: 12 }}>
+                às {proximoHabito.horario}
+              </div>
+            )}
+            <button
+              onClick={() => router.push("/habitos")}
+              style={{
+                width: "100%", background: "#1a1a2e",
+                border: "1px solid #2e2e4e", borderRadius: 8,
+                padding: "8px", color: "#6b6b8a",
+                fontSize: 12, cursor: "pointer"
+              }}
+            >
+              Ver detalhes
+            </button>
           </div>
         )}
 
-        {/* O que parece ajudar */}
+        {/* Anotação rápida */}
         <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>o que parece ajudar</span>
-            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
+          <div style={{
+            fontSize: 11, color: "#4a4a6a",
+            textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10
+          }}>
+            ✏️ ANOTAÇÃO RÁPIDA
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {ajudando.map((a, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 17, flexShrink: 0 }}>{a.icone}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 2 }}>{a.label}</div>
-                  <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5 }}>{a.descricao}</div>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981", flexShrink: 0 }}>{a.valor}</span>
-              </div>
-            ))}
-          </div>
+          <textarea
+            value={anotacao}
+            onChange={e => salvarAnotacao(e.target.value)}
+            placeholder="Escreva algo rápido..."
+            style={{
+              width: "100%", minHeight: 90,
+              background: "#08080f", border: "1px solid #1a1a2e",
+              borderRadius: 8, padding: "10px 12px",
+              color: "#94a3b8", fontSize: 12, outline: "none",
+              resize: "vertical", boxSizing: "border-box",
+              fontFamily: "inherit", lineHeight: 1.6
+            }}
+          />
         </div>
-
-        {/* O que pode estar pesando */}
-        <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>o que pode estar pesando</span>
-            <button onClick={() => router.push("/insights")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver →</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {prejudicando.map((p, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 17, flexShrink: 0 }}>{p.icone}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", marginBottom: 2 }}>{p.label}</div>
-                  <div style={{ fontSize: 11, color: "#6b6b8a", lineHeight: 1.5 }}>{p.descricao}</div>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#fb923c", flexShrink: 0 }}>{p.valor}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Hábitos hoje */}
-        {habitos.length > 0 && (
-          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>🔥 hábitos hoje</span>
-              <button onClick={() => router.push("/habitos")} style={{ background: "none", border: "none", color: "#4a4a6a", fontSize: 11, cursor: "pointer", padding: 0 }}>ver todos →</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {habitos.slice(0, 4).map((h: any) => {
-                const feito = (h.historico || []).includes(hoje)
-                return (
-                  <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14 }}>{h.icone}</span>
-                    <span style={{ flex: 1, fontSize: 12, color: feito ? "#e2e8f0" : "#4a4a6a" }}>{h.nome}</span>
-                    <div style={{ width: 14, height: 14, borderRadius: 4, background: feito ? "#7c3aed" : "#1a1a2e", border: feito ? "none" : "1px solid #2e2e4e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff" }}>
-                      {feito ? "✓" : ""}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
