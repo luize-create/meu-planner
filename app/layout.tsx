@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
-import Sidebar from "./components/Sidebar"
 import { PlannerProvider } from "./context/PlannerContext"
+import CheckinGuard from "./components/CheckinGuard"
 
 export const metadata: Metadata = {
   title: "Focus Planner",
@@ -11,12 +11,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body style={{ margin: 0, background: "#0a0a0f", color: "#e2e8f0", fontFamily: "system-ui, sans-serif", display: "flex", minHeight: "100vh" }}>
+      <body style={{ margin: 0, background: "#07070f", color: "#e2e8f0", fontFamily: "system-ui, sans-serif", display: "flex", minHeight: "100vh" }}>
         <PlannerProvider>
-          <Sidebar />
-          <main style={{ flex: 1, overflowY: "auto" }}>
-            {children}
-          </main>
+          <CheckinGuard>{children}</CheckinGuard>
         </PlannerProvider>
       </body>
     </html>
