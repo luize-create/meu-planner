@@ -4,24 +4,13 @@ import { useState, useEffect, useRef } from "react"
 import { usePlanner } from "../context/PlannerContext"
 
 const MODOS = {
-  foco: { label: "Foco profundo", minutos: 25, cor: "#7c3aed" },
-  curta: { label: "Pausa curta", minutos: 5, cor: "#059669" },
-  longa: { label: "Pausa longa", minutos: 15, cor: "#2563eb" },
+  foco:  { label: "Foco profundo", minutos: 25, cor: "#7c3aed" },
+  curta: { label: "Pausa curta",   minutos: 5,  cor: "#059669" },
+  longa: { label: "Pausa longa",   minutos: 15, cor: "#2563eb" },
 }
 type Modo = keyof typeof MODOS
 
-const frases = [
-  "Volte para o presente.",
-  "Uma coisa de cada vez.",
-  "Clareza nasce da continuidade.",
-  "Aqui. Agora. Isso.",
-  "Respire. Comece. Continue.",
-  "O foco é um ato de cuidado.",
-  "Silêncio mental é produtividade.",
-]
-
-const presets = [15, 20, 25, 30, 45, 60]
-const intencoes = ["Construir", "Aprender", "Organizar", "Descansar mentalmente", "Avançar com calma"]
+const presets = [15, 25, 45, 60, 90]
 
 function getSegundosRestantes(): number {
   try {
@@ -29,15 +18,14 @@ function getSegundosRestantes(): number {
     const duracao = Number(localStorage.getItem("foco-duracao") || 25 * 60)
     const rodando = localStorage.getItem("foco-rodando") === "true"
     if (iniciou && rodando) {
-      const elapsed = Math.floor((Date.now() - Number(iniciou)) / 1000)
-      const restante = duracao - elapsed
+      const restante = duracao - Math.floor((Date.now() - Number(iniciou)) / 1000)
       return restante > 0 ? restante : 0
     }
     return duracao
   } catch { return 25 * 60 }
 }
 
-function getTempoCustomInicial(): number {
+function getTempoInicial(): number {
   try { return Number(localStorage.getItem("foco-tempo-custom") || 25) } catch { return 25 }
 }
 
@@ -47,46 +35,58 @@ function getRodandoInicial(): boolean {
     const iniciou = localStorage.getItem("foco-iniciou")
     const duracao = Number(localStorage.getItem("foco-duracao") || 25 * 60)
     if (!iniciou) return false
-    const elapsed = Math.floor((Date.now() - Number(iniciou)) / 1000)
-    return elapsed < duracao
+    return Math.floor((Date.now() - Number(iniciou)) / 1000) < duracao
   } catch { return false }
 }
 
-export default function Foco() {
-  const { data, setSessoesFoco, setTarefas, adicionarXP } = usePlanner()
-  const sessoesFoco = data.sessoesFoco as any[]
-  const tarefas = data.tarefas as any[]
+function fmt(s: number) {
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
+}
 
-  const tempoInicial = getTempoCustomInicial()
-  const [modo, setModo] = useState<Modo>("foco")
-  const [tempoCustom, setTempoCustom] = useState(tempoInicial)
-  const [horas, setHoras] = useState(Math.floor(tempoInicial / 60))
-  const [minutos, setMinutos] = useState(tempoInicial % 60)
-  const [segundos, setSegundos] = useState(getSegundosRestantes)
-  const [rodando, setRodando] = useState(getRodandoInicial)
+function fmtMin(m: number) {
+  if (m === 0) return "0m"
+  if (m < 60) return `${m}m`
+  const min = m % 60
+  return min > 0 ? `${Math.floor(m / 60)}h ${min}m` : `${Math.floor(m / 60)}h`
+}
+
+export default function Foco() {
+  const { data, setSessoesFoco, adicionarXP } = usePlanner()
+  const sessoesFoco = data.sessoesFoco as any[]
+
+  const [modo,        setModo]        = useState<Modo>("foco")
+  const [tempoCustom, setTempoCustom] = useState(getTempoInicial)
+  const [segundos,    setSegundos]    = useState(getSegundosRestantes)
+  const [rodando,     setRodando]     = useState(getRodandoInicial)
+  const [objetivo,    setObjetivo]    = useState("")
+  const [concluida,   setConcluida]   = useState(false)
+  const [imersao,     setImersao]     = useState(false)
+  const [customAberto,setCustomAberto]= useState(false)
+  const [customInput, setCustomInput] = useState(getTempoInicial)
+  const [metaSemanal, setMetaSemanal] = useState(() => {
+    try { return Number(localStorage.getItem("foco-meta-semanal") || 600) } catch { return 600 }
+  })
   const intervalo = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const [metaDiaria, setMetaDiaria] = useState(() => {
-    try { return Number(localStorage.getItem("foco-meta-diaria") || 120) } catch { return 120 }
-  })
-  const [editandoMeta, setEditandoMeta] = useState(false)
-  const [intencao, setIntencao] = useState("")
-  const [intencaoTexto, setIntencaoTexto] = useState("")
-  const [tarefaSelecionada, setTarefaSelecionada] = useState<any>(null)
-  const [sessaoConcluida, setSessaoConcluida] = useState(false)
-
   const hoje = new Date().toISOString().slice(0, 10)
-  const sessoesHoje = sessoesFoco.filter((s: any) => s.data === hoje)
-  const hojeMin = sessoesHoje.reduce((acc: number, s: any) => acc + (s.minutos || 0), 0)
-  const totalMin = sessoesFoco.reduce((acc: number, s: any) => acc + (s.minutos || 0), 0)
-  const minAtual = rodando ? Math.floor((tempoCustom * 60 - segundos) / 60) : 0
-  const hojeMinTotal = hojeMin + minAtual
-  const totalMinGeral = totalMin + minAtual
-  const pctMeta = metaDiaria > 0 ? Math.min(100, Math.round(hojeMinTotal / metaDiaria * 100)) : 0
-  const consistencia = sessoesHoje.length > 0 ? Math.min(100, Math.round((sessoesHoje.length / 4) * 100)) : 0
-  const frase = frases[new Date().getDay() % frases.length]
-  const tarefasHoje = tarefas.filter((t: any) => t.data === hoje && !t.feita)
-  const cor = MODOS[modo].cor
+  const inicioSemana = (() => {
+    const d = new Date(); d.setDate(d.getDate() - d.getDay())
+    return d.toISOString().slice(0, 10)
+  })()
+
+  const sessoesHoje   = sessoesFoco.filter((s: any) => s.data === hoje)
+  const sessoesSemana = sessoesFoco.filter((s: any) => s.data >= inicioSemana)
+  const hojeMin       = sessoesHoje.reduce((a: number, s: any) => a + (s.minutos || 0), 0)
+  const semanaMin     = sessoesSemana.reduce((a: number, s: any) => a + (s.minutos || 0), 0)
+  const minDecorridos = rodando ? Math.floor((tempoCustom * 60 - segundos) / 60) : 0
+  const hojeTotal     = hojeMin + minDecorridos
+  const semanaTotal   = semanaMin + minDecorridos
+  const pctMeta       = metaSemanal > 0 ? Math.min(100, Math.round(semanaTotal / metaSemanal * 100)) : 0
+
+  const cor  = MODOS[modo].cor
+  const raio = 140
+  const circ = 2 * Math.PI * raio
+  const pct  = tempoCustom > 0 ? (tempoCustom * 60 - segundos) / (tempoCustom * 60) : 0
 
   useEffect(() => {
     if (rodando) {
@@ -101,13 +101,10 @@ export default function Foco() {
         setSegundos(restante)
         if (restante <= 0) {
           clearInterval(intervalo.current!)
-          setRodando(false)
+          setRodando(false); setImersao(false)
           localStorage.setItem("foco-rodando", "false")
           localStorage.removeItem("foco-iniciou")
-          if (modo === "foco") {
-            concluirSessao()
-            setSessaoConcluida(true)
-          }
+          if (modo === "foco") { salvarSessao(tempoCustom, true); setConcluida(true) }
         }
       }, 1000)
     } else {
@@ -116,44 +113,47 @@ export default function Foco() {
     return () => { if (intervalo.current) clearInterval(intervalo.current) }
   }, [rodando])
 
-  function concluirSessao() {
-    const tarefaNome = tarefaSelecionada?.texto || intencaoTexto || intencao || "Sessão de foco"
-    const nova: any = {
-      id: Date.now(),
-      tipo: MODOS[modo].label,
-      tarefa: tarefaNome,
-      tarefaId: tarefaSelecionada?.id || null,
+  function salvarSessao(minutos: number, completa: boolean) {
+    setSessoesFoco([{
+      id: Date.now(), tipo: MODOS[modo].label,
+      tarefa: objetivo || "Sessão de foco",
       hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      minutos: tempoCustom,
-      data: hoje,
-    }
-    setSessoesFoco([nova, ...sessoesFoco].slice(0, 100) as any)
-    adicionarXP(50)
-    if (tarefaSelecionada) {
-      setTarefas(tarefas.map((t: any) =>
-        t.id === tarefaSelecionada.id ? { ...t, feita: true } : t
-      ) as any)
-      setTarefaSelecionada(null)
-    }
+      minutos, data: hoje, concluida: completa,
+    }, ...sessoesFoco].slice(0, 100) as any)
+    if (completa) adicionarXP(50)
   }
 
   function iniciarOuPausar() {
-    if (sessaoConcluida) return
+    if (concluida) return
     if (!rodando) {
       localStorage.setItem("foco-iniciou", String(Date.now() - (tempoCustom * 60 - segundos) * 1000))
+      setImersao(true)
     } else {
       localStorage.removeItem("foco-iniciou")
       localStorage.setItem("foco-rodando", "false")
+      setImersao(false)
     }
     setRodando(!rodando)
   }
 
+  function pausarDeImersao() {
+    setRodando(false); setImersao(false)
+    localStorage.setItem("foco-rodando", "false")
+    localStorage.removeItem("foco-iniciou")
+  }
+
+  function encerrar() {
+    const minFoco = Math.max(1, Math.floor((tempoCustom * 60 - segundos) / 60))
+    salvarSessao(minFoco, false)
+    setRodando(false); setImersao(false); setSegundos(tempoCustom * 60)
+    localStorage.setItem("foco-rodando", "false")
+    localStorage.removeItem("foco-iniciou")
+  }
+
   function mudarModo(m: Modo) {
-    setModo(m)
-    setRodando(false)
+    setModo(m); setRodando(false); setConcluida(false); setImersao(false)
     const t = MODOS[m].minutos
-    setTempoCustom(t); setMinutos(t % 60); setHoras(Math.floor(t / 60)); setSegundos(t * 60)
-    setSessaoConcluida(false)
+    setTempoCustom(t); setSegundos(t * 60)
     localStorage.setItem("foco-rodando", "false")
     localStorage.removeItem("foco-iniciou")
     localStorage.setItem("foco-tempo-custom", String(t))
@@ -161,298 +161,214 @@ export default function Foco() {
   }
 
   function selecionarPreset(t: number) {
-    setRodando(false)
-    setTempoCustom(t); setMinutos(t % 60); setHoras(Math.floor(t / 60)); setSegundos(t * 60)
+    setRodando(false); setConcluida(false); setCustomAberto(false)
+    setTempoCustom(t); setSegundos(t * 60); setCustomInput(t)
     localStorage.setItem("foco-rodando", "false")
     localStorage.removeItem("foco-iniciou")
     localStorage.setItem("foco-tempo-custom", String(t))
     localStorage.setItem("foco-duracao", String(t * 60))
   }
 
-  function ajustarMinutos(delta: number) {
-    const novoMin = Math.max(0, Math.min(59, minutos + delta))
-    setMinutos(novoMin)
-    const total = horas * 60 + novoMin
-    if (total > 0) {
-      setTempoCustom(total); setSegundos(total * 60)
-      localStorage.setItem("foco-tempo-custom", String(total))
-      localStorage.setItem("foco-duracao", String(total * 60))
-    }
-    setRodando(false)
-    localStorage.setItem("foco-rodando", "false")
-    localStorage.removeItem("foco-iniciou")
-  }
-
-  function salvarMeta(valor: number) {
-    if (valor > 0) {
-      setMetaDiaria(valor)
-      localStorage.setItem("foco-meta-diaria", String(valor))
-    }
-    setEditandoMeta(false)
-  }
-
   function resetar() {
-    setRodando(false); setSegundos(tempoCustom * 60); setSessaoConcluida(false)
+    setRodando(false); setSegundos(tempoCustom * 60)
+    setConcluida(false); setImersao(false)
     localStorage.setItem("foco-rodando", "false")
     localStorage.removeItem("foco-iniciou")
   }
 
-  const minStr = String(Math.floor(segundos / 60)).padStart(2, "0")
-  const segStr = String(segundos % 60).padStart(2, "0")
-  const total = tempoCustom * 60
-  const pct = total > 0 ? ((total - segundos) / total) : 0
-  const raio = 140
-  const circ = 2 * Math.PI * raio
+  function aplicarCustom() {
+    if (customInput > 0) selecionarPreset(customInput)
+  }
 
-  return (
-    <div style={{ padding: "24px 32px", color: "#e2e8f0", minHeight: "100%" }}>
-
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Modo foco</h1>
-          <p style={{ fontSize: 13, color: "#4a4a6a", margin: "4px 0 0", fontStyle: "italic" }}>Um espaço para desacelerar o ruído.</p>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          {rodando && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: cor + "18", border: `1px solid ${cor}30`, borderRadius: 20, padding: "5px 12px" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: cor, boxShadow: `0 0 6px ${cor}` }} />
-              <span style={{ fontSize: 12, color: cor, fontWeight: 500 }}>Em sessão · {minStr}:{segStr}</span>
-            </div>
-          )}
-          <div style={{ fontSize: 12, color: "#4a4a6a" }}>
-            Hoje: <span style={{ color: "#a855f7" }}>{Math.floor(hojeMinTotal / 60)}h {hojeMinTotal % 60}m</span>
-            <span style={{ margin: "0 6px", color: "#2e2e4e" }}>·</span>
-            Total: <span style={{ color: "#6b6b8a" }}>{Math.floor(totalMinGeral / 60)}h {totalMinGeral % 60}m</span>
+  const TimerCircle = ({ size = 320 }: { size?: number }) => {
+    const r = size === 320 ? 140 : 130
+    const c = 2 * Math.PI * r
+    return (
+      <div style={{ position: "relative", width: size, height: size }}>
+        <div style={{ position: "absolute", inset: "-8%", borderRadius: "50%", background: `radial-gradient(circle, ${cor}18, transparent 65%)`, filter: "blur(28px)", pointerEvents: "none" }} />
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", inset: 0 }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1a1a2e" strokeWidth="3" />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={cor} strokeWidth="3"
+            strokeDasharray={`${c * pct} ${c}`} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`}
+            style={{ transition: "stroke-dasharray .5s", filter: `drop-shadow(0 0 6px ${cor}80)` }} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          <div style={{ fontSize: size > 300 ? 68 : 56, fontWeight: 200, letterSpacing: 4, color: concluida ? cor : "#e2e8f0", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+            {concluida ? "✓" : fmt(segundos)}
+          </div>
+          <div style={{ fontSize: 11, color: "#4a4a6a" }}>
+            {concluida ? "+50 XP 🎉" : rodando ? "em andamento" : "restante"}
           </div>
         </div>
       </div>
+    )
+  }
 
-      {/* Frase */}
-      <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <span style={{ fontSize: 14, color: "#4a4a6a", fontStyle: "italic" }}>❝ {frase} ❞</span>
-      </div>
+  return (
+    <>
+      {/* ── MODO IMERSÃO ── */}
+      {imersao && (
+        <div style={{ position: "fixed", inset: 0, background: "#07070f", zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0 }}>
+          <style>{`@keyframes fi{from{opacity:0}to{opacity:1}}`}</style>
+          <div style={{ animation: "fi .5s ease" }}>
+            {objetivo && (
+              <p style={{ textAlign: "center", fontSize: 14, color: "#4a4a6a", fontStyle: "italic", marginBottom: 32 }}>
+                {objetivo}
+              </p>
+            )}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
+              <TimerCircle size={320} />
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button onClick={pausarDeImersao} style={{ padding: "12px 28px", borderRadius: 12, background: "#1a1a2e", border: "1px solid #2e2e4e", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
+                ⏸ Pausar
+              </button>
+              <button onClick={encerrar} style={{ padding: "12px 28px", borderRadius: 12, background: "transparent", border: "1px solid #1a1a2e", color: "#4a4a6a", fontSize: 13, cursor: "pointer" }}>
+                Encerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Layout principal — 2 colunas */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, marginBottom: 20 }}>
+      {/* ── PÁGINA ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 240px", minHeight: "100vh", color: "#e2e8f0" }}>
 
-        {/* Centro — Timer + Intenção */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* Central */}
+        <div style={{ padding: "32px 40px", display: "flex", flexDirection: "column", alignItems: "center" }}>
 
-          {/* Seletor modo */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 28, background: "#0a0a14", border: "1px solid #1a1a2e", borderRadius: 14, padding: 5 }}>
+          {/* Header */}
+          <div style={{ width: "100%", maxWidth: 500, marginBottom: 28 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 500, margin: "0 0 4px" }}>Foco</h1>
+            <p style={{ fontSize: 12, color: "#4a4a6a", margin: 0 }}>Menos distração, mais você.</p>
+          </div>
+
+          {/* Modo tabs */}
+          <div style={{ display: "flex", gap: 2, background: "#0a0a14", border: "1px solid #1a1a2e", borderRadius: 14, padding: 4, marginBottom: 28 }}>
             {(Object.keys(MODOS) as Modo[]).map(m => (
-              <button key={m} onClick={() => mudarModo(m)} style={{ padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, background: modo === m ? MODOS[m].cor + "30" : "transparent", color: modo === m ? MODOS[m].cor : "#4a4a6a", transition: "all .25s", boxShadow: modo === m ? `0 0 14px ${MODOS[m].cor}25` : "none" }}>
+              <button key={m} onClick={() => mudarModo(m)} style={{ padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, background: modo === m ? MODOS[m].cor + "25" : "transparent", color: modo === m ? MODOS[m].cor : "#4a4a6a", transition: "all .2s" }}>
                 {MODOS[m].label}
               </button>
             ))}
           </div>
 
-          {/* Timer circle */}
-          <div style={{ position: "relative", width: 360, height: 360, marginBottom: 32 }}>
-            <div style={{ position: "absolute", inset: "-8%", borderRadius: "50%", background: `radial-gradient(circle, ${cor}14, transparent 65%)`, filter: "blur(28px)", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", inset: "18%", borderRadius: "50%", background: `radial-gradient(circle, ${cor}08, transparent 70%)`, filter: "blur(14px)", pointerEvents: "none" }} />
-            <svg width="360" height="360" viewBox="0 0 360 360" style={{ position: "absolute", inset: 0 }}>
-              <circle cx="180" cy="180" r="172" fill="none" stroke="#1a1a2e" strokeWidth="1" strokeDasharray="3 7" />
-              <circle cx="180" cy="180" r={raio} fill="none" stroke="#1a1a2e" strokeWidth="4" />
-              <circle cx="180" cy="180" r={raio} fill="none" stroke={cor} strokeWidth="4"
-                strokeDasharray={`${circ * pct} ${circ}`} strokeLinecap="round" transform="rotate(-90 180 180)"
-                style={{ transition: "stroke-dasharray .5s", filter: `drop-shadow(0 0 8px ${cor})` }} />
-              {pct > 0.01 && (
-                <circle cx={180 + raio * Math.cos(-Math.PI / 2 + 2 * Math.PI * pct)} cy={180 + raio * Math.sin(-Math.PI / 2 + 2 * Math.PI * pct)}
-                  r="7" fill={cor} style={{ filter: `drop-shadow(0 0 5px ${cor})` }} />
-              )}
-            </svg>
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${cor}50`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ width: 18, height: 18, borderRadius: "50%", border: `1.5px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: cor }} />
-                </div>
-              </div>
-              <div style={{ fontSize: 14, color: cor, fontWeight: 500 }}>{MODOS[modo].label}</div>
-              <div style={{ fontSize: 68, fontWeight: 200, letterSpacing: 4, color: sessaoConcluida ? cor : "#e2e8f0", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-                {sessaoConcluida ? "✓" : `${minStr}:${segStr}`}
-              </div>
-              <div style={{ fontSize: 12, color: "#4a4a6a", marginBottom: 8 }}>
-                {sessaoConcluida ? "Sessão concluída! +50 XP 🎉" : rodando ? "Em andamento..." : "Tempo restante"}
-              </div>
-              {(tarefaSelecionada || intencaoTexto || intencao) && !sessaoConcluida && (
-                <div style={{ fontSize: 11, color: "#4a4a6a", maxWidth: 180, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {tarefaSelecionada?.texto || intencaoTexto || intencao}
-                </div>
-              )}
-              <button onClick={iniciarOuPausar} disabled={sessaoConcluida}
-                style={{ width: 52, height: 52, borderRadius: "50%", marginTop: 8, background: sessaoConcluida ? "#059669" : rodando ? "#1a1a2e" : cor, border: rodando && !sessaoConcluida ? `2px solid ${cor}` : "none", cursor: sessaoConcluida ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#fff", boxShadow: `0 0 20px ${sessaoConcluida ? "#059669" : cor}50`, transition: "all .25s" }}>
-                {sessaoConcluida ? "✓" : rodando ? "⏸" : "▶"}
-              </button>
-            </div>
+          {/* Objetivo */}
+          <div style={{ width: "100%", maxWidth: 500, marginBottom: 24 }}>
+            <input
+              value={objetivo}
+              onChange={e => setObjetivo(e.target.value)}
+              placeholder="Qual é o foco da sua sessão?"
+              style={{ width: "100%", background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 12, padding: "13px 18px", color: "#e2e8f0", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+              onFocus={e => (e.target.style.borderColor = cor)}
+              onBlur={e => (e.target.style.borderColor = "#1a1a2e")}
+            />
           </div>
 
-          {/* Presets + controles */}
-          {!sessaoConcluida && (
-            <div style={{ width: "100%", maxWidth: 420 }}>
-              <div style={{ fontSize: 11, color: "#4a4a6a", fontWeight: 500, textAlign: "center", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Duração</div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 16 }}>
-                {presets.map(p => {
-                  const ativo = tempoCustom === p
-                  return (
-                    <button key={p} onClick={() => selecionarPreset(p)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 12, border: "1px solid", borderColor: ativo ? cor : "#1a1a2e", background: ativo ? cor + "25" : "#0f0f1c", cursor: "pointer", transition: "all .2s", boxShadow: ativo ? `0 0 14px ${cor}35` : "none" }}>
-                      <span style={{ fontSize: 16, fontWeight: ativo ? 600 : 400, color: ativo ? cor : "#6b6b8a" }}>{p}</span>
-                      <span style={{ fontSize: 9, color: ativo ? cor + "cc" : "#3a3a5a" }}>min</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 12, padding: "14px 12px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#6b6b8a", fontSize: 13 }}>
-                  Personalizado ✎
-                </div>
-                <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <button onClick={() => ajustarMinutos(-5)} style={{ background: "none", border: "none", color: "#6b6b8a", cursor: "pointer", fontSize: 18, padding: "0 4px" }}>−</button>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 18, fontWeight: 300, color: "#e2e8f0", letterSpacing: 2, fontVariantNumeric: "tabular-nums" }}>{String(horas).padStart(2, "0")}</div>
-                      <div style={{ fontSize: 9, color: "#4a4a6a" }}>hh</div>
-                    </div>
-                    <span style={{ fontSize: 18, color: "#4a4a6a" }}>:</span>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 18, fontWeight: 300, color: "#e2e8f0", letterSpacing: 2, fontVariantNumeric: "tabular-nums" }}>{String(minutos).padStart(2, "0")}</div>
-                      <div style={{ fontSize: 9, color: "#4a4a6a" }}>min</div>
-                    </div>
-                  </div>
-                  <button onClick={() => ajustarMinutos(5)} style={{ background: "none", border: "none", color: "#6b6b8a", cursor: "pointer", fontSize: 18, padding: "0 4px" }}>+</button>
-                </div>
-                <button onClick={resetar} style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 12, padding: "14px 12px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: cor, fontSize: 13, cursor: "pointer" }}>
-                  <span>↺</span> Redefinir
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Timer */}
+          <div style={{ marginBottom: 24 }}>
+            <TimerCircle size={320} />
+          </div>
+
+          {/* Botão principal */}
+          <button onClick={iniciarOuPausar} disabled={concluida} style={{ width: "100%", maxWidth: 320, padding: "15px 0", borderRadius: 14, border: rodando ? `1px solid ${cor}` : "none", background: concluida ? "#059669" : rodando ? "#0f0f1c" : cor, color: "#fff", fontSize: 15, fontWeight: 600, cursor: concluida ? "default" : "pointer", boxShadow: !rodando && !concluida ? `0 4px 20px ${cor}40` : "none", transition: "all .2s", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            {concluida ? "✓ Sessão concluída" : rodando ? "⏸ Pausar" : "▶ Iniciar foco"}
+          </button>
 
           {rodando && (
-            <button onClick={() => { setRodando(false); resetar() }} style={{ marginTop: 16, background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 12 }}>
-              ☐ Abandonar sessão
+            <button onClick={encerrar} style={{ background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 12, marginBottom: 16 }}>
+              Encerrar sessão
             </button>
           )}
 
-          {/* Intenção */}
-          <div style={{ width: "100%", maxWidth: 420, marginTop: 24, background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span>🎯</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Intenção da sessão</span>
-            </div>
-            {tarefasHoje.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 6 }}>Tarefas de hoje</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  {tarefasHoje.slice(0, 3).map((t: any) => (
-                    <div key={t.id} onClick={() => { setTarefaSelecionada(tarefaSelecionada?.id === t.id ? null : t); setIntencaoTexto(""); setIntencao("") }}
-                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "1px solid", cursor: "pointer", transition: "all .15s", borderColor: tarefaSelecionada?.id === t.id ? cor : "#1e1e35", background: tarefaSelecionada?.id === t.id ? cor + "15" : "#12121f" }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: tarefaSelecionada?.id === t.id ? cor : "#3a3a5a", flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: tarefaSelecionada?.id === t.id ? "#e2e8f0" : "#6b6b8a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.texto}</span>
-                    </div>
-                  ))}
-                </div>
+          {/* Presets */}
+          {!concluida && !rodando && (
+            <div style={{ width: "100%", maxWidth: 500, marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                {presets.map(p => {
+                  const ativo = tempoCustom === p && !customAberto
+                  return (
+                    <button key={p} onClick={() => selecionarPreset(p)} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 60, height: 60, borderRadius: 14, border: `1px solid ${ativo ? cor : "#1a1a2e"}`, background: ativo ? cor + "20" : "#0f0f1c", cursor: "pointer", transition: "all .2s", boxShadow: ativo ? `0 0 10px ${cor}25` : "none" }}>
+                      <span style={{ fontSize: 16, fontWeight: ativo ? 600 : 400, color: ativo ? cor : "#6b6b8a", marginTop: 14 }}>{p}</span>
+                      <span style={{ fontSize: 9, color: ativo ? cor + "aa" : "#3a3a5a", marginTop: 1 }}>min</span>
+                    </button>
+                  )
+                })}
+                <button onClick={() => setCustomAberto(!customAberto)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 60, height: 60, borderRadius: 14, border: `1px solid ${customAberto ? cor : "#1a1a2e"}`, background: customAberto ? cor + "20" : "#0f0f1c", cursor: "pointer", transition: "all .2s" }}>
+                  <span style={{ fontSize: 16, color: customAberto ? cor : "#6b6b8a" }}>+</span>
+                  <span style={{ fontSize: 8, color: customAberto ? cor + "aa" : "#3a3a5a", marginTop: 2 }}>custom</span>
+                </button>
               </div>
-            )}
-            <input placeholder="Ou escreva livremente..." value={intencaoTexto}
-              onChange={e => { setIntencaoTexto(e.target.value); setTarefaSelecionada(null); setIntencao("") }}
-              style={{ width: "100%", background: "#12121f", border: "1px solid #1e1e35", borderRadius: 8, padding: "9px 12px", color: "#e2e8f0", fontSize: 12, outline: "none", marginBottom: 10 }} />
-            <div style={{ fontSize: 11, color: "#4a4a6a", marginBottom: 6 }}>Chip de intenção</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {intencoes.map(i => (
-                <button key={i} onClick={() => { setIntencao(intencao === i ? "" : i); setIntencaoTexto(""); setTarefaSelecionada(null) }}
-                  style={{ padding: "5px 10px", borderRadius: 20, border: "1px solid", fontSize: 11, cursor: "pointer", transition: "all .15s", borderColor: intencao === i ? cor : "#1e1e35", background: intencao === i ? cor + "20" : "#12121f", color: intencao === i ? cor : "#6b6b8a" }}>{i}</button>
-              ))}
+
+              {customAberto && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 12, padding: "12px 16px" }}>
+                  <span style={{ flex: 1, fontSize: 12, color: "#6b6b8a" }}>Personalizado</span>
+                  <input type="number" min={1} max={480} value={customInput} onChange={e => setCustomInput(Number(e.target.value))} style={{ width: 56, background: "#12121f", border: `1px solid ${cor}40`, borderRadius: 8, padding: "6px 10px", color: "#e2e8f0", fontSize: 14, outline: "none", textAlign: "center" }} />
+                  <span style={{ fontSize: 12, color: "#4a4a6a" }}>min</span>
+                  <button onClick={aplicarCustom} style={{ background: cor, border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontSize: 12, cursor: "pointer" }}>Ok</button>
+                </div>
+              )}
+
+              <div style={{ textAlign: "center", marginTop: 14 }}>
+                <button onClick={resetar} style={{ background: "none", border: "none", color: "#3a3a5a", cursor: "pointer", fontSize: 11 }}>↺ Redefinir</button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {concluida && (
+            <button onClick={resetar} style={{ marginTop: 16, background: "#7c3aed18", border: "1px solid #7c3aed30", borderRadius: 10, padding: "9px 22px", color: "#a855f7", cursor: "pointer", fontSize: 13 }}>
+              Nova sessão →
+            </button>
+          )}
         </div>
 
-        {/* Direita — Métricas */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span>〰️</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Métricas de hoje</span>
+        {/* Sidebar direita */}
+        <div style={{ background: "#08080f", borderLeft: "1px solid #0f0f22", padding: "32px 16px", display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 11, color: "#4a4a6a", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18 }}>Resumo</div>
+
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {[
+              { icone: "⏱", label: "Foco de hoje",      valor: fmtMin(hojeTotal) },
+              { icone: "📅", label: "Foco desta semana", valor: fmtMin(semanaTotal) },
+              { icone: "🎯", label: "Meta semanal",      valor: fmtMin(metaSemanal) },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 0", borderBottom: i < 2 ? "1px solid #0f0f22" : "none" }}>
+                <span style={{ fontSize: 14 }}>{item.icone}</span>
+                <span style={{ flex: 1, fontSize: 12, color: "#6b6b8a" }}>{item.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{item.valor}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: "#4a4a6a" }}>Progresso semanal</span>
+              <span style={{ fontSize: 11, color: cor }}>{pctMeta}%</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {[
-                { label: "Sessões", valor: sessoesHoje.length + (rodando ? 1 : 0) },
-                { label: "Minutos focados", valor: `${Math.floor(hojeMinTotal / 60)}h ${hojeMinTotal % 60}m` },
-                { label: "XP ganho", valor: `+${sessoesHoje.length * 50}` },
-                { label: "Consistência", valor: `${consistencia}%` },
-              ].map((m, i) => (
-                <div key={i} style={{ background: "#12121f", borderRadius: 10, padding: "12px 10px" }}>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: i === 2 ? "#f59e0b" : "#e2e8f0", marginBottom: 2 }}>{m.valor}</div>
-                  <div style={{ fontSize: 10, color: "#4a4a6a" }}>{m.label}</div>
-                </div>
-              ))}
+            <div style={{ background: "#1a1a2e", borderRadius: 20, height: 4 }}>
+              <div style={{ background: cor, height: 4, borderRadius: 20, width: `${pctMeta}%`, transition: "width .4s", boxShadow: `0 0 6px ${cor}60` }} />
             </div>
           </div>
 
-          {/* Meta diária */}
-          <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Meta diária</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {editandoMeta ? (
-                  <>
-                    <input type="number" min={10} max={480} defaultValue={metaDiaria} autoFocus
-                      onBlur={e => salvarMeta(Number(e.target.value))}
-                      onKeyDown={e => e.key === "Enter" && salvarMeta(Number((e.target as HTMLInputElement).value))}
-                      style={{ width: 60, background: "#12121f", border: `1px solid ${cor}`, borderRadius: 6, padding: "3px 8px", color: "#e2e8f0", fontSize: 12, outline: "none", textAlign: "center" }} />
-                    <span style={{ fontSize: 11, color: "#4a4a6a" }}>min</span>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ fontSize: 13, color: cor }}>{pctMeta}%</span>
-                    <button onClick={() => setEditandoMeta(true)} style={{ background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 13, padding: "0 2px" }}>✎</button>
-                  </>
-                )}
-              </div>
+          <div style={{ marginTop: "auto", paddingTop: 32 }}>
+            <div style={{ textAlign: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 18, color: cor, opacity: 0.5 }}>✦</span>
             </div>
-            <div style={{ background: "#1a1a2e", borderRadius: 20, height: 5, marginBottom: 6 }}>
-              <div style={{ background: `linear-gradient(90deg, ${cor}, ${cor}88)`, height: 5, borderRadius: 20, width: `${pctMeta}%`, transition: "width .4s", boxShadow: `0 0 6px ${cor}60` }} />
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#4a4a6a" }}>{hojeMinTotal} de {metaDiaria} minutos</span>
-              {!editandoMeta && <button onClick={() => setEditandoMeta(true)} style={{ background: "none", border: "none", color: "#4a4a6a", cursor: "pointer", fontSize: 10, padding: 0 }}>Alterar meta</button>}
-            </div>
+            <p style={{ fontSize: 12, color: "#4a4a6a", lineHeight: 1.8, textAlign: "center", fontStyle: "italic", margin: "0 0 20px" }}>
+              "A consistência de hoje<br />cria a clareza de amanhã."
+            </p>
+            <svg width="100%" viewBox="0 0 220 70" style={{ opacity: 0.25 }}>
+              <defs>
+                <linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={cor} stopOpacity="0.7" />
+                  <stop offset="100%" stopColor={cor} stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+              <polygon points="0,70 55,18 110,45 165,8 220,70" fill="url(#mg)" />
+              <polygon points="0,70 35,38 75,55 110,28 148,50 185,22 220,70" fill={cor} opacity="0.12" />
+            </svg>
           </div>
         </div>
       </div>
-
-      {/* Sessões recentes */}
-      <div style={{ background: "#0f0f1c", border: "1px solid #1a1a2e", borderRadius: 14, padding: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span>⏱</span>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Sessões de hoje</span>
-          </div>
-          <span style={{ fontSize: 12, color: "#4a4a6a" }}>{sessoesHoje.length} sessões · {hojeMinTotal} min</span>
-        </div>
-        {sessoesHoje.length === 0 && !rodando && (
-          <div style={{ fontSize: 13, color: "#4a4a6a" }}>Nenhuma sessão ainda hoje. Inicie seu primeiro bloco de foco!</div>
-        )}
-        {rodando && sessoesHoje.length === 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: cor + "10", border: `1px solid ${cor}20`, borderRadius: 10 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: cor, boxShadow: `0 0 6px ${cor}` }} />
-            <span style={{ fontSize: 13, color: cor }}>Sessão em andamento... {minStr}:{segStr}</span>
-          </div>
-        )}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 8, marginTop: sessoesHoje.length > 0 ? 0 : 8 }}>
-          {sessoesHoje.slice(0, 6).map((s: any, i: number) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#12121f", borderRadius: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 9, background: cor + "20", border: `1px solid ${cor}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13 }}>▶</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500 }}>{s.minutos} min · {s.tipo}</div>
-                <div style={{ fontSize: 11, color: "#4a4a6a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.tarefa}</div>
-              </div>
-              <span style={{ fontSize: 10, color: "#3a3a5a", flexShrink: 0 }}>{s.hora}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </>
   )
 }
