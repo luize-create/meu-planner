@@ -5,14 +5,12 @@ import { usePathname } from "next/navigation"
 import { usePlanner } from "../context/PlannerContext"
 
 const navItems = [
-  { icon: "🏠", label: "Central",     href: "/" },
-  { icon: "⏱",  label: "Foco",        href: "/foco" },
-  { icon: "✅", label: "Hábitos",     href: "/habitos" },
-  { icon: "📁", label: "Projetos",    href: "/projetos" },
-  { icon: "💡", label: "Ideias",      href: "/ideias" },
-  { icon: "✨", label: "Insights",    href: "/insights" },
-  { icon: "🧠", label: "Mapa Mental", href: "/mapa-mental" },
-  { icon: "🌱", label: "Evolução",    href: "/evolucao" },
+  { icon: "🏠", label: "Central",  href: "/" },
+  { icon: "⏱",  label: "Foco",     href: "/foco" },
+  { icon: "✅", label: "Hábitos",  href: "/habitos" },
+  { icon: "📁", label: "Projetos", href: "/projetos" },
+  { icon: "💡", label: "Ideias",   href: "/ideias" },
+  { icon: "✨", label: "Insights", href: "/insights" },
 ]
 
 const diasSemana = ["S","T","Q","Q","S","S","D"]
