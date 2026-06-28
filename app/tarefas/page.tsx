@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { usePlanner } from "../context/PlannerContext"
+import AgendaSemana from "../components/AgendaSemana"
 
 const categorias = ["Estudos", "Programação", "IA", "Saúde", "Pessoal", "Trabalho", "Projetos"]
 const prioridades = ["Alta", "Média", "Baixa"]
@@ -63,6 +64,8 @@ export default function Tarefas() {
 
   return (
     <div style={{ padding: "24px 28px", color: "#e2e8f0", maxWidth: 800 }}>
+
+      <AgendaSemana />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
